@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Resultado</h2>
+  <p>Probabilidad de abandono: {{ prediction }}</p>
+  <img src="{{ url_for('static', filename='prediccion.png') }}" alt="Gráfico">
+  <h3>Datos</h3>
+  {{ table | safe }}
+  <a href="/export/pdf">Descargar PDF</a> |
+  <a href="/export/excel">Descargar Excel</a>
+{% endblock %}

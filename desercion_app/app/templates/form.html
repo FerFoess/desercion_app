@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>Formulario Estudiantil</h2>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    {{ form.edad.label }} {{ form.edad() }}<br>
+    {{ form.promedio.label }} {{ form.promedio() }}<br>
+    {{ form.ingreso_familiar.label }} {{ form.ingreso_familiar() }}<br>
+    {{ form.submit() }}
+  </form>
+{% endblock %}
