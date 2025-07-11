@@ -12,7 +12,7 @@ def form():
         data = form.data
         prediction, graph_path, table = predict_dropout(data)
         return render_template('results.html', prediction=prediction, graph=graph_path, table=table)
-    return render_template('form.html', form=form)
+    return render_template('index.html')
 
 @bp.route('/export/pdf')
 def export_pdf():

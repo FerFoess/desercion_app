@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+    <h2 class="mb-4">Subir archivo de respuestas</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <input class="form-control" type="file" name="file" accept=".xlsx, .xls">
+        </div>
+        <button class="btn btn-success">Subir y mostrar</button>
+    </form>
+
+    {% if data %}
+    <hr>
+    <h3 class="mt-4">Vista previa del archivo</h3>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                {% for col in data.columns %}
+                    <th>{{ col }}</th>
+                {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data.values %}
+                <tr>
+                    {% for item in row %}
+                    <td>{{ item }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+{% endblock %}
