@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Predicción de Abandono Escolar</title>
+</head>
+<body>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul style="color: green;">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <h1>Predicción de Abandono Escolar</h1>
+
+  <form action="{{ url_for('main.procesar') }}" method="post" enctype="multipart/form-data">
+    <label><strong>Sube tu archivo CSV:</strong></label><br>
+    <input type="file" name="archivo_csv" required><br><br>
+
+    <h3>Selecciona las variables por categoría:</h3>
+
+    <fieldset>
+      <legend><strong>🧑‍🎓 Datos académicos</strong></legend>
+      <label><input type="checkbox" name="variables" value="promedio"> Promedio</label><br>
+      <label><input type="checkbox" name="variables" value="reprobo_materia"> Reprobó materia</label><br>
+      <label><input type="checkbox" name="variables" value="materias_reprobadas"> Nº de materias reprobadas</label><br>
+      <label><input type="checkbox" name="variables" value="motivacion"> Motivación</label><br>
+      <label><input type="checkbox" name="variables" value="asistencia"> Asistencia</label><br>
+      <label><input type="checkbox" name="variables" value="dificultad_materias"> Dificultades académicas</label><br>
+      <label><input type="checkbox" name="variables" value="horas_estudio"> Horas de estudio</label><br>
+    </fieldset>
+
+    <fieldset>
+      <legend><strong>💬 Datos personales y emocionales</strong></legend>
+      <label><input type="checkbox" name="variables" value="estres"> Estrés</label><br>
+      <label><input type="checkbox" name="variables" value="condicion_medica"> Condición médica</label><br>
+    </fieldset>
+
+    <fieldset>
+      <legend><strong>🏠 Entorno Familiar</strong></legend>
+      <label><input type="checkbox" name="variables" value="vive_con_tutores"> Vive con tutores</label><br>
+      <label><input type="checkbox" name="variables" value="apoyo_familiar"> Apoyo familiar</label><br>
+      <label><input type="checkbox" name="variables" value="conflictos_casa"> Conflictos en casa</label><br>
+    </fieldset>
+
+    <fieldset>
+      <legend><strong>💸 Situación económica y laboral</strong></legend>
+      <label><input type="checkbox" name="variables" value="trabaja"> Tiene empleo</label><br>
+      <label><input type="checkbox" name="variables" value="trabaja_apoyo"> Apoya económicamente</label><br>
+      <label><input type="checkbox" name="variables" value="economia_dificulta"> Economía limita estudios</label><br>
+      <label><input type="checkbox" name="variables" value="acceso_recursos"> Acceso a recursos</label><br>
+    </fieldset>
+
+    <fieldset>
+      <legend><strong>🎯 Aspiraciones y apoyo escolar</strong></legend>
+      <label><input type="checkbox" name="variables" value="interes_terminar"> Interés por terminar</label><br>
+      <label><input type="checkbox" name="variables" value="orientacion"> Recibe orientación</label><br>
+      <label><input type="checkbox" name="variables" value="conoce_apoyos"> Conoce becas/apoyos</label><br>
+    </fieldset>
+
+    <fieldset>
+      <legend><strong>🆔 Otros</strong></legend>
+      <label><input type="checkbox" name="variables" value="edad"> Edad</label><br>
+      <label><input type="checkbox" name="variables" value="sexo"> Sexo</label><br>
+    </fieldset>
+
+    <br>
+    <label><strong>Porcentaje para entrenamiento (no usado en clusterización):</strong></label><br>
+    <input type="number" name="porcentaje" min="10" max="90" value="70" disabled> %<br><br>
+
+    <button type="submit">Procesar Clusterización</button>
+  </form>
+</body>
+</html>

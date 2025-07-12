@@ -1,6 +1,6 @@
 Flask
 Flask-WTF
-sklearn
+scikit-learn
 pandas
 matplotlib
 fpdf

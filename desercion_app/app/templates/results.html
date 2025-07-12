@@ -1,10 +1,68 @@
-{% extends "base.html" %}
-{% block content %}
-  <h2>Resultado</h2>
-  <p>Probabilidad de abandono: {{ prediction }}</p>
-  <img src="{{ url_for('static', filename='prediccion.png') }}" alt="Gráfico">
-  <h3>Datos</h3>
-  {{ table | safe }}
-  <a href="/export/pdf">Descargar PDF</a> |
-  <a href="/export/excel">Descargar Excel</a>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Resultados de la Clusterización</title>
+  <style>
+    table, th, td {
+      border: 1px solid gray;
+      border-collapse: collapse;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Resultados de la Clusterización</h1>
+
+  <p><strong>Clúster considerado como "Alto riesgo de abandono":</strong> {{ resultados.etiqueta_alto_riesgo }}</p>
+
+  <h2>Resumen de Clústeres (promedios por variable):</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Clúster</th>
+        {% for col in resultados.resumen_clusters.columns %}
+          <th>{{ col }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for cluster, row in resultados.resumen_clusters.iterrows() %}
+        <tr>
+          <td>{{ cluster }}</td>
+          {% for col in resultados.resumen_clusters.columns %}
+            <td>{{ row[col]|round(2) }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Ejemplo de datos con etiquetas:</h2>
+  <table>
+    <thead>
+      <tr>
+        {% for col in resultados.datos_clusterizados.columns[:8] %}
+          <th>{{ col }}</th>
+        {% endfor %}
+        <th>cluster</th>
+        <th>etiqueta_riesgo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for _, row in resultados.datos_clusterizados.head(10).iterrows() %}
+        <tr>
+          {% for col in resultados.datos_clusterizados.columns[:8] %}
+            <td>{{ row[col] }}</td>
+          {% endfor %}
+          <td>{{ row['cluster'] }}</td>
+          <td>{{ row['etiqueta_riesgo'] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <br>
+  <a href="{{ url_for('main.index') }}">← Volver</a>
+</body>
+</html>
