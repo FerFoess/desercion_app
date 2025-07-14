@@ -1,13 +1,26 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Resultados de la Clusterización</title>
   <style>
     table, th, td {
       border: 1px solid gray;
       border-collapse: collapse;
       padding: 5px;
+    }
+    section {
+      display: none;
+      margin-top: 20px;
+    }
+    section.active {
+      display: block;
+    }
+    .checkbox-group {
+      margin-bottom: 15px;
+    }
+    button {
+      margin-right: 10px;
     }
   </style>
 </head>
@@ -16,53 +29,126 @@
 
   <p><strong>Clúster considerado como "Alto riesgo de abandono":</strong> {{ resultados.etiqueta_alto_riesgo }}</p>
 
-  <h2>Resumen de Clústeres (promedios por variable):</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Clúster</th>
-        {% for col in resultados.resumen_clusters.columns %}
-          <th>{{ col }}</th>
-        {% endfor %}
-      </tr>
-    </thead>
-    <tbody>
-      {% for cluster, row in resultados.resumen_clusters.iterrows() %}
+  <!-- Menú para elegir sección -->
+  <nav>
+    <button type="button" onclick="mostrarSeccion('resumen')">Resumen de Clústeres</button>
+    <button type="button" onclick="mostrarSeccion('datos')">Datos con Etiquetas</button>
+    <button type="button" onclick="mostrarSeccion('graficos')">Gráficos</button>
+  </nav>
+
+  <!-- Sección Resumen -->
+  <section id="resumen" class="active">
+    <h2>Resumen de Clústeres (promedios por variable):</h2>
+    <div class="checkbox-group">
+      <label><input type="checkbox" class="pdf-item" value="resumen" checked /> Incluir en PDF</label>
+      <label><input type="checkbox" class="excel-item" value="resumen" checked /> Incluir en Excel</label>
+    </div>
+    <table>
+      <thead>
         <tr>
-          <td>{{ cluster }}</td>
+          <th>Clúster</th>
           {% for col in resultados.resumen_clusters.columns %}
-            <td>{{ row[col]|round(2) }}</td>
+            <th>{{ col }}</th>
           {% endfor %}
         </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-
-  <h2>Ejemplo de datos con etiquetas:</h2>
-  <table>
-    <thead>
-      <tr>
-        {% for col in resultados.datos_clusterizados.columns[:8] %}
-          <th>{{ col }}</th>
+      </thead>
+      <tbody>
+        {% for cluster, row in resultados.resumen_clusters.iterrows() %}
+          <tr>
+            <td>{{ cluster }}</td>
+            {% for col in resultados.resumen_clusters.columns %}
+              <td>{{ row[col]|round(2) }}</td>
+            {% endfor %}
+          </tr>
         {% endfor %}
-        <th>cluster</th>
-        <th>etiqueta_riesgo</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for _, row in resultados.datos_clusterizados.head(10).iterrows() %}
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Sección Datos -->
+  <section id="datos">
+    <h2>Ejemplo de Datos con Etiquetas (primeros 10 registros):</h2>
+    <div class="checkbox-group">
+      <label><input type="checkbox" class="pdf-item" value="datos" checked /> Incluir en PDF</label>
+      <label><input type="checkbox" class="excel-item" value="datos" checked /> Incluir en Excel</label>
+    </div>
+    <table>
+      <thead>
         <tr>
           {% for col in resultados.datos_clusterizados.columns[:8] %}
-            <td>{{ row[col] }}</td>
+            <th>{{ col }}</th>
           {% endfor %}
-          <td>{{ row['cluster'] }}</td>
-          <td>{{ row['etiqueta_riesgo'] }}</td>
+          <th>cluster</th>
+          <th>etiqueta_riesgo</th>
         </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {% for _, row in resultados.datos_clusterizados.head(10).iterrows() %}
+          <tr>
+            {% for col in resultados.datos_clusterizados.columns[:8] %}
+              <td>{{ row[col] }}</td>
+            {% endfor %}
+            <td>{{ row['cluster'] }}</td>
+            <td>{{ row['etiqueta_riesgo'] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
 
-  <br>
-  <a href="{{ url_for('main.index') }}">← Volver</a>
+  <!-- Sección Gráficos -->
+  <section id="graficos">
+    <h2>Gráficos de Clústeres:</h2>
+    <div class="checkbox-group">
+      <label><input type="checkbox" class="pdf-item" value="grafico1" checked /> Incluir Gráfico 1 en PDF</label><br>
+      <label><input type="checkbox" class="pdf-item" value="grafico2" checked /> Incluir Gráfico 2 en PDF</label><br>
+      <label><input type="checkbox" class="excel-item" value="grafico_tabla" checked /> Incluir Tabla de Gráficos en Excel</label>
+    </div>
+    <div>
+      <h3>Gráfico 1:</h3>
+      <img src="{{ url_for('static', filename=resultados.grafica1) }}" alt="Gráfico 1" width="600" />
+    </div>
+    <div>
+      <h3>Gráfico 2:</h3>
+      <img src="{{ url_for('static', filename=resultados.grafica2) }}" alt="Gráfico 2" width="600" />
+    </div>
+  </section>
+
+  <!-- Botones Exportar -->
+  <div style="margin-top:30px;">
+    <form method="POST" action="{{ url_for('main.export_pdf') }}" id="form-pdf">
+      <input type="hidden" name="items" id="pdf-items" />
+      <button type="submit">Exportar PDF</button>
+    </form>
+
+    <form method="POST" action="{{ url_for('main.export_excel') }}" id="form-excel">
+      <input type="hidden" name="items" id="excel-items" />
+      <button type="submit">Exportar Excel</button>
+    </form>
+  </div>
+
+  <br><a href="{{ url_for('main.index') }}">← Volver</a>
+
+  <script>
+    function mostrarSeccion(nombre) {
+      document.querySelectorAll('section').forEach(sec => {
+        sec.classList.remove('active');
+      });
+      document.getElementById(nombre).classList.add('active');
+    }
+
+    // Recoger items seleccionados antes de enviar formularios
+    document.getElementById('form-pdf').addEventListener('submit', function(e){
+      const checkboxes = document.querySelectorAll('.pdf-item:checked');
+      const seleccionados = Array.from(checkboxes).map(cb => cb.value);
+      document.getElementById('pdf-items').value = JSON.stringify(seleccionados);
+    });
+
+    document.getElementById('form-excel').addEventListener('submit', function(e){
+      const checkboxes = document.querySelectorAll('.excel-item:checked');
+      const seleccionados = Array.from(checkboxes).map(cb => cb.value);
+      document.getElementById('excel-items').value = JSON.stringify(seleccionados);
+    });
+  </script>
 </body>
 </html>

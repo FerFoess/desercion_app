@@ -2,30 +2,14 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session
 from .logic.modelo import procesar_clusterizacion
 from .utils import generate_pdf, generate_excel  # Simula funciones de exportación
-
+from flask import request, send_file, flash, redirect, url_for
+import json
 bp = Blueprint('main', __name__)
 
 @bp.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
 
-@bp.route('/export/pdf')
-def export_pdf():
-    try:
-        output_path = generate_pdf(session.get('resultados', []))
-        return send_file(output_path, as_attachment=True)
-    except Exception:
-        flash("No se pudo generar el PDF.")
-        return redirect(url_for('main.index'))
-
-@bp.route('/export/excel')
-def export_excel():
-    try:
-        output_path = generate_excel(session.get('resultados', []))
-        return send_file(output_path, as_attachment=True)
-    except Exception:
-        flash("No se pudo generar el archivo Excel.")
-        return redirect(url_for('main.index'))
 
 @bp.route('/procesar', methods=['POST'])
 def procesar():
@@ -56,3 +40,34 @@ def procesar():
     resultados['datos_clusterizados'] = resultados['datos_clusterizados'].reset_index()
 
     return render_template('results.html', resultados=resultados)
+
+
+
+@bp.route('/export/pdf', methods=['POST'])
+def export_pdf():
+    try:
+        items = json.loads(request.form.get('items', '[]'))
+        # Ejemplo: items = ['resumen', 'datos', 'grafico1']
+        resultados = session.get('resultados')
+        if not resultados:
+            flash('No hay resultados para exportar.')
+            return redirect(url_for('main.index'))
+        output_path = generate_pdf(resultados, items)
+        return send_file(output_path, as_attachment=True)
+    except Exception as e:
+        flash(f"No se pudo generar el PDF: {e}")
+        return redirect(url_for('main.index'))
+
+@bp.route('/export/excel', methods=['POST'])
+def export_excel():
+    try:
+        items = json.loads(request.form.get('items', '[]'))
+        resultados = session.get('resultados')
+        if not resultados:
+            flash('No hay resultados para exportar.')
+            return redirect(url_for('main.index'))
+        output_path = generate_excel(resultados, items)
+        return send_file(output_path, as_attachment=True)
+    except Exception as e:
+        flash(f"No se pudo generar el Excel: {e}")
+        return redirect(url_for('main.index'))
