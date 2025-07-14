@@ -1,9 +1,10 @@
 import os
 import json
 import pandas as pd
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session, after_this_request
 from .logic.modelo import procesar_clusterizacion
 from .utils import generate_pdf, generate_excel
+from datetime import datetime
 
 bp = Blueprint('main', __name__)
 
@@ -52,7 +53,6 @@ def procesar():
         limite = 100
 
     try:
-        # Ya no pasamos variables: se usan variables fijas internamente
         resultados = procesar_clusterizacion(csv_path, variables=None, n_clusters=3, limite_datos=limite)
     except Exception as e:
         flash(f"Error al procesar la clusterización: {str(e)}")
@@ -67,11 +67,15 @@ def procesar():
 
     return render_template('results.html', resultados=resultados)
 
+
 @bp.route('/export/pdf', methods=['POST'])
 def export_pdf():
     try:
-        items = json.loads(request.form.get('items', '[]'))
+        items_raw = request.form.get('items', '[]')
+        print("📝 PDF items:", items_raw)
+        items = json.loads(items_raw)
         resultados = session.get('resultados')
+
         if not resultados:
             flash('No hay resultados para exportar.')
             return redirect(url_for('main.index'))
@@ -85,8 +89,11 @@ def export_pdf():
 @bp.route('/export/excel', methods=['POST'])
 def export_excel():
     try:
-        items = json.loads(request.form.get('items', '[]'))
+        items_raw = request.form.get('items', '[]')
+        print("📊 Excel items:", items_raw)
+        items = json.loads(items_raw)
         resultados = session.get('resultados')
+
         if not resultados:
             flash('No hay resultados para exportar.')
             return redirect(url_for('main.index'))

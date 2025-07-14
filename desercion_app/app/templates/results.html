@@ -143,21 +143,22 @@
     </div>
 
     <!-- Sección Exportar -->
-    <div class="tab-pane fade" id="exportar" role="tabpanel" aria-labelledby="exportar-tab">
-      <div class="card shadow mb-4">
-        <div class="card-header bg-primary text-white">📤 Exportar resultados</div>
-        <div class="card-body text-center">
-          <form method="POST" action="{{ url_for('main.export_pdf') }}" id="form-pdf" class="d-inline-block me-3">
-            <input type="hidden" name="items" id="pdf-items" />
-            <button type="submit" class="btn btn-danger">📄 Exportar PDF</button>
-          </form>
-          <form method="POST" action="{{ url_for('main.export_excel') }}" id="form-excel" class="d-inline-block">
-            <input type="hidden" name="items" id="excel-items" />
-            <button type="submit" class="btn btn-success">📊 Exportar Excel</button>
-          </form>
-        </div>
-      </div>
+<div class="tab-pane fade" id="exportar" role="tabpanel" aria-labelledby="exportar-tab">
+  <div class="card shadow mb-4">
+    <div class="card-header bg-primary text-white">📤 Exportar resultados</div>
+    <div class="card-body text-center">
+      <form method="POST" action="{{ url_for('main.export_pdf') }}" id="form-pdf" class="d-inline-block me-3">
+        <input type="hidden" name="items" id="pdf-items" />
+        <button type="submit" class="btn btn-danger">📄 Exportar PDF</button>
+      </form>
+      <form method="POST" action="{{ url_for('main.export_excel') }}" id="form-excel" class="d-inline-block">
+        <input type="hidden" name="items" id="excel-items" />
+        <button type="submit" class="btn btn-success">📊 Exportar Excel</button>
+      </form>
     </div>
+  </div>
+</div>
+
 
     <!-- Sección Datos individuales -->
     <div class="tab-pane fade" id="filtrar" role="tabpanel" aria-labelledby="filtrar-tab">
@@ -204,8 +205,7 @@ console.log("¿Es arreglo?:", Array.isArray(data));
 
 
     console.log("Datos totales:", data);
-    const dataParseada = JSON.parse(data);
-const filtrados = dataParseada.filter(r => r.etiqueta_riesgo === nivel);
+    const filtrados = data.filter(r => r.etiqueta_riesgo === nivel);
 
 
     console.log("Datos filtrados:", filtrados);
@@ -228,6 +228,24 @@ const filtrados = dataParseada.filter(r => r.etiqueta_riesgo === nivel);
 
     document.getElementById('tabla-filtrada').innerHTML = html;
   }
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Al enviar PDF
+    document.getElementById('form-pdf').addEventListener('submit', function (e) {
+      const checks = document.querySelectorAll('.pdf-item:checked');
+      const items = Array.from(checks).map(c => c.value);
+      document.getElementById('pdf-items').value = JSON.stringify(items);
+    });
+
+    // Al enviar Excel
+    document.getElementById('form-excel').addEventListener('submit', function (e) {
+      const checks = document.querySelectorAll('.excel-item:checked');
+      const items = Array.from(checks).map(c => c.value);
+      document.getElementById('excel-items').value = JSON.stringify(items);
+    });
+  });
 </script>
 
 
