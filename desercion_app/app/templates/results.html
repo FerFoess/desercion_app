@@ -38,18 +38,18 @@
               <tr>
                 <th>Clúster</th>
                 {% for col in resultados.resumen_clusters.columns %}
-                  <th>{{ col }}</th>
+                <th>{{ col }}</th>
                 {% endfor %}
               </tr>
             </thead>
             <tbody>
               {% for cluster, row in resultados.resumen_clusters.iterrows() %}
-                <tr>
-                  <td>{{ cluster }}</td>
-                  {% for col in resultados.resumen_clusters.columns %}
-                    <td>{{ row[col]|round(2) }}</td>
-                  {% endfor %}
-                </tr>
+              <tr>
+                <td>{{ cluster }}</td>
+                {% for col in resultados.resumen_clusters.columns %}
+                <td>{{ row[col]|round(2) }}</td>
+                {% endfor %}
+              </tr>
               {% endfor %}
             </tbody>
           </table>
@@ -77,7 +77,7 @@
             <thead class="table-light">
               <tr>
                 {% for col in resultados.datos_clusterizados.columns[:8] %}
-                  <th>{{ col }}</th>
+                <th>{{ col }}</th>
                 {% endfor %}
                 <th>cluster</th>
                 <th>etiqueta_riesgo</th>
@@ -85,13 +85,13 @@
             </thead>
             <tbody>
               {% for _, row in resultados.datos_clusterizados.head(10).iterrows() %}
-                <tr>
-                  {% for col in resultados.datos_clusterizados.columns[:8] %}
-                    <td>{{ row[col] }}</td>
-                  {% endfor %}
-                  <td>{{ row['cluster'] }}</td>
-                  <td>{{ row['etiqueta_riesgo'] }}</td>
-                </tr>
+              <tr>
+                {% for col in resultados.datos_clusterizados.columns[:8] %}
+                <td>{{ row[col] }}</td>
+                {% endfor %}
+                <td>{{ row['cluster'] }}</td>
+                <td>{{ row['etiqueta_riesgo'] }}</td>
+              </tr>
               {% endfor %}
             </tbody>
           </table>
@@ -123,7 +123,8 @@
             <div class="card shadow">
               <div class="card-header">📈 Gráfico 1</div>
               <div class="card-body text-center">
-                <img src="{{ url_for('static', filename=resultados.grafica1) }}" alt="Gráfico 1" class="img-fluid rounded">
+                <img src="{{ url_for('static', filename=resultados.grafica1) }}" alt="Gráfico 1"
+                  class="img-fluid rounded">
               </div>
             </div>
           </div>
@@ -131,7 +132,8 @@
             <div class="card shadow">
               <div class="card-header">📊 Gráfico 2</div>
               <div class="card-body text-center">
-                <img src="{{ url_for('static', filename=resultados.grafica2) }}" alt="Gráfico 2" class="img-fluid rounded">
+                <img src="{{ url_for('static', filename=resultados.grafica2) }}" alt="Gráfico 2"
+                  class="img-fluid rounded">
               </div>
             </div>
           </div>
@@ -151,6 +153,10 @@
       <input type="hidden" name="items" id="excel-items" />
       <button type="submit" class="btn btn-success">📊 Exportar Excel</button>
     </form>
+    <div id="spinner" class="text-center mt-3" style="display:none;">
+      <div class="spinner-border text-primary" role="status"></div>
+      <p>Generando archivo, por favor espera...</p>
+    </div>
   </div>
 
   <div class="text-center mt-4">
@@ -159,17 +165,21 @@
 </div>
 
 <script>
-function mostrarSeccion(nombre) {
-  document.querySelectorAll('section').forEach(sec => sec.classList.remove('active'));
-  document.getElementById(nombre).classList.add('active');
-}
-document.getElementById('form-pdf').addEventListener('submit', function(){
-  const seleccionados = Array.from(document.querySelectorAll('.pdf-item:checked')).map(cb => cb.value);
-  document.getElementById('pdf-items').value = JSON.stringify(seleccionados);
-});
-document.getElementById('form-excel').addEventListener('submit', function(){
-  const seleccionados = Array.from(document.querySelectorAll('.excel-item:checked')).map(cb => cb.value);
-  document.getElementById('excel-items').value = JSON.stringify(seleccionados);
-});
+  function mostrarSeccion(nombre) {
+    document.querySelectorAll('section').forEach(sec => sec.classList.remove('active'));
+    document.getElementById(nombre).classList.add('active');
+  }
+  document.getElementById('form-pdf').addEventListener('submit', function () {
+    document.getElementById('spinner').style.display = 'block';
+    const seleccionados = Array.from(document.querySelectorAll('.pdf-item:checked')).map(cb => cb.value);
+    document.getElementById('pdf-items').value = JSON.stringify(seleccionados);
+  });
+
+  document.getElementById('form-excel').addEventListener('submit', function () {
+    document.getElementById('spinner').style.display = 'block';
+    const seleccionados = Array.from(document.querySelectorAll('.excel-item:checked')).map(cb => cb.value);
+    document.getElementById('excel-items').value = JSON.stringify(seleccionados);
+  });
+
 </script>
 {% endblock %}

@@ -50,8 +50,13 @@ def export_pdf():
             flash('No hay resultados para exportar.')
             return redirect(url_for('main.index'))
 
-        output_path = generate_pdf(resultados, items)
-        return send_file(output_path, as_attachment=True)
+        pdf_buffer = generate_pdf(resultados, items)
+        return send_file(
+            pdf_buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='reporte.pdf'
+        )
     except Exception as e:
         flash(f"No se pudo generar el PDF: {e}")
         return redirect(url_for('main.index'))
@@ -65,8 +70,13 @@ def export_excel():
             flash('No hay resultados para exportar.')
             return redirect(url_for('main.index'))
 
-        output_path = generate_excel(resultados, items)
-        return send_file(output_path, as_attachment=True)
+        excel_buffer = generate_excel(resultados, items)
+        return send_file(
+            excel_buffer,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='reporte.xlsx'
+        )
     except Exception as e:
         flash(f"No se pudo generar el Excel: {e}")
         return redirect(url_for('main.index'))
