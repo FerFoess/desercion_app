@@ -67,7 +67,6 @@ def procesar():
 
     return render_template('results.html', resultados=resultados)
 
-
 @bp.route('/export/pdf', methods=['POST'])
 def export_pdf():
     try:
@@ -82,7 +81,6 @@ def export_pdf():
     except Exception as e:
         flash(f"No se pudo generar el PDF: {e}")
         return redirect(url_for('main.index'))
-
 
 @bp.route('/export/excel', methods=['POST'])
 def export_excel():
