@@ -1,15 +1,14 @@
 import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session
 from .logic.modelo import procesar_clusterizacion
-from .utils import generate_pdf, generate_excel  # Simula funciones de exportación
-from flask import request, send_file, flash, redirect, url_for
+from .utils import generate_pdf, generate_excel
 import json
+
 bp = Blueprint('main', __name__)
 
 @bp.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
-
 
 @bp.route('/procesar', methods=['POST'])
 def procesar():
@@ -18,7 +17,8 @@ def procesar():
         flash('Por favor sube un archivo CSV válido.')
         return redirect(url_for('main.index'))
 
-    filepath = os.path.join('app', 'data', archivo.filename)
+    filepath = os.path.join('desercion_app', 'app', 'data', archivo.filename)
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
     archivo.save(filepath)
 
     variables = request.form.getlist('variables')
@@ -32,26 +32,24 @@ def procesar():
         flash(f"Error al procesar la clusterización: {str(e)}")
         return redirect(url_for('main.index'))
 
-    # Guardar solo los datos clusterizados para exportar
+    # Guardar en sesión solo los datos para exportar
     session['resultados'] = resultados["datos_clusterizados"].to_dict(orient='records')
 
-    # Convertir DataFrames a formato adecuado para render_template
+    # Pasar DataFrames para mostrar en template
     resultados['resumen_clusters'] = resultados['resumen_clusters'].reset_index()
     resultados['datos_clusterizados'] = resultados['datos_clusterizados'].reset_index()
 
     return render_template('results.html', resultados=resultados)
 
-
-
 @bp.route('/export/pdf', methods=['POST'])
 def export_pdf():
     try:
         items = json.loads(request.form.get('items', '[]'))
-        # Ejemplo: items = ['resumen', 'datos', 'grafico1']
         resultados = session.get('resultados')
         if not resultados:
             flash('No hay resultados para exportar.')
             return redirect(url_for('main.index'))
+
         output_path = generate_pdf(resultados, items)
         return send_file(output_path, as_attachment=True)
     except Exception as e:
@@ -66,6 +64,7 @@ def export_excel():
         if not resultados:
             flash('No hay resultados para exportar.')
             return redirect(url_for('main.index'))
+
         output_path = generate_excel(resultados, items)
         return send_file(output_path, as_attachment=True)
     except Exception as e:

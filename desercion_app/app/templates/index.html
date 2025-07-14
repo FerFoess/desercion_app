@@ -1,78 +1,188 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Predicción de Abandono Escolar</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Predicción de Abandono Escolar{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+  <h1 class="text-center mb-4">📊 Predicción de Abandono Escolar</h1>
+
   {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <ul style="color: green;">
-        {% for message in messages %}
-          <li>{{ message }}</li>
-        {% endfor %}
-      </ul>
-    {% endif %}
+  {% if messages %}
+  <div class="alert alert-success">
+    {% for message in messages %}
+    <div>{{ message }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% endwith %}
 
-  <h1>Predicción de Abandono Escolar</h1>
+  <form action="{{ url_for('main.procesar') }}" method="post" enctype="multipart/form-data" class="card shadow p-4">
 
-  <form action="{{ url_for('main.procesar') }}" method="post" enctype="multipart/form-data">
-    <label><strong>Sube tu archivo CSV:</strong></label><br>
-    <input type="file" name="archivo_csv" required><br><br>
+    <div class="mb-3">
+      <label class="form-label"><strong>Sube tu archivo CSV:</strong></label>
+      <input type="file" name="archivo_csv" class="form-control" required>
+    </div>
 
-    <h3>Selecciona las variables por categoría:</h3>
+    <h4 class="mb-3">Selecciona las variables por categoría:</h4>
 
-    <fieldset>
-      <legend><strong>🧑‍🎓 Datos académicos</strong></legend>
-      <label><input type="checkbox" name="variables" value="promedio"> Promedio</label><br>
-      <label><input type="checkbox" name="variables" value="reprobo_materia"> Reprobó materia</label><br>
-      <label><input type="checkbox" name="variables" value="materias_reprobadas"> Nº de materias reprobadas</label><br>
-      <label><input type="checkbox" name="variables" value="motivacion"> Motivación</label><br>
-      <label><input type="checkbox" name="variables" value="asistencia"> Asistencia</label><br>
-      <label><input type="checkbox" name="variables" value="dificultad_materias"> Dificultades académicas</label><br>
-      <label><input type="checkbox" name="variables" value="horas_estudio"> Horas de estudio</label><br>
-    </fieldset>
+    <div class="accordion" id="variablesAccordion">
 
-    <fieldset>
-      <legend><strong>💬 Datos personales y emocionales</strong></legend>
-      <label><input type="checkbox" name="variables" value="estres"> Estrés</label><br>
-      <label><input type="checkbox" name="variables" value="condicion_medica"> Condición médica</label><br>
-    </fieldset>
+      <!-- Datos académicos -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingAcademicos">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAcademicos"
+            aria-expanded="true">
+            🧑‍🎓 Datos académicos
+          </button>
+        </h2>
+        <div id="collapseAcademicos" class="accordion-collapse collapse show">
+          <div class="accordion-body">
+            {% set academicos = [
+            ('promedio', 'Promedio'),
+            ('reprobo_materia', 'Reprobó materia'),
+            ('materias_reprobadas', 'Nº de materias reprobadas'),
+            ('motivacion', 'Motivación'),
+            ('asistencia', 'Asistencia'),
+            ('dificultad_materias', 'Dificultades académicas'),
+            ('horas_estudio', 'Horas de estudio')
+            ] %}
+            {% for var, label in academicos %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="variables" value="{{ var }}">
+              <label class="form-check-label">{{ label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
 
-    <fieldset>
-      <legend><strong>🏠 Entorno Familiar</strong></legend>
-      <label><input type="checkbox" name="variables" value="vive_con_tutores"> Vive con tutores</label><br>
-      <label><input type="checkbox" name="variables" value="apoyo_familiar"> Apoyo familiar</label><br>
-      <label><input type="checkbox" name="variables" value="conflictos_casa"> Conflictos en casa</label><br>
-    </fieldset>
+      <!-- Datos personales y emocionales -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingPersonales">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#collapsePersonales">
+            💬 Datos personales y emocionales
+          </button>
+        </h2>
+        <div id="collapsePersonales" class="accordion-collapse collapse">
+          <div class="accordion-body">
+            {% set personales = [
+            ('estres', 'Estrés'),
+            ('condicion_medica', 'Condición médica')
+            ] %}
+            {% for var, label in personales %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="variables" value="{{ var }}">
+              <label class="form-check-label">{{ label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
 
-    <fieldset>
-      <legend><strong>💸 Situación económica y laboral</strong></legend>
-      <label><input type="checkbox" name="variables" value="trabaja"> Tiene empleo</label><br>
-      <label><input type="checkbox" name="variables" value="trabaja_apoyo"> Apoya económicamente</label><br>
-      <label><input type="checkbox" name="variables" value="economia_dificulta"> Economía limita estudios</label><br>
-      <label><input type="checkbox" name="variables" value="acceso_recursos"> Acceso a recursos</label><br>
-    </fieldset>
+      <!-- Entorno familiar -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingFamiliar">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#collapseFamiliar">
+            🏠 Entorno Familiar
+          </button>
+        </h2>
+        <div id="collapseFamiliar" class="accordion-collapse collapse">
+          <div class="accordion-body">
+            {% set familiar = [
+            ('vive_con_tutores', 'Vive con tutores'),
+            ('apoyo_familiar', 'Apoyo familiar'),
+            ('conflictos_casa', 'Conflictos en casa')
+            ] %}
+            {% for var, label in familiar %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="variables" value="{{ var }}">
+              <label class="form-check-label">{{ label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
 
-    <fieldset>
-      <legend><strong>🎯 Aspiraciones y apoyo escolar</strong></legend>
-      <label><input type="checkbox" name="variables" value="interes_terminar"> Interés por terminar</label><br>
-      <label><input type="checkbox" name="variables" value="orientacion"> Recibe orientación</label><br>
-      <label><input type="checkbox" name="variables" value="conoce_apoyos"> Conoce becas/apoyos</label><br>
-    </fieldset>
+      <!-- Situación económica -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingEconomica">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#collapseEconomica">
+            💸 Situación económica y laboral
+          </button>
+        </h2>
+        <div id="collapseEconomica" class="accordion-collapse collapse">
+          <div class="accordion-body">
+            {% set economica = [
+            ('trabaja', 'Tiene empleo'),
+            ('trabaja_apoyo', 'Apoya económicamente'),
+            ('economia_dificulta', 'Economía limita estudios'),
+            ('acceso_recursos', 'Acceso a recursos')
+            ] %}
+            {% for var, label in economica %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="variables" value="{{ var }}">
+              <label class="form-check-label">{{ label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
 
-    <fieldset>
-      <legend><strong>🆔 Otros</strong></legend>
-      <label><input type="checkbox" name="variables" value="edad"> Edad</label><br>
-      <label><input type="checkbox" name="variables" value="sexo"> Sexo</label><br>
-    </fieldset>
+      <!-- Aspiraciones -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingAspiraciones">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#collapseAspiraciones">
+            🎯 Aspiraciones y apoyo escolar
+          </button>
+        </h2>
+        <div id="collapseAspiraciones" class="accordion-collapse collapse">
+          <div class="accordion-body">
+            {% set aspiraciones = [
+            ('interes_terminar', 'Interés por terminar'),
+            ('orientacion', 'Recibe orientación'),
+            ('conoce_apoyos', 'Conoce becas/apoyos')
+            ] %}
+            {% for var, label in aspiraciones %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="variables" value="{{ var }}">
+              <label class="form-check-label">{{ label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
 
-    <br>
-    <label><strong>Porcentaje para entrenamiento (no usado en clusterización):</strong></label><br>
-    <input type="number" name="porcentaje" min="10" max="90" value="70" disabled> %<br><br>
+      <!-- Otros -->
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="headingOtros">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#collapseOtros">
+            🆔 Otros
+          </button>
+        </h2>
+        <div id="collapseOtros" class="accordion-collapse collapse">
+          <div class="accordion-body">
+            {% set otros = [
+            ('edad', 'Edad'),
+            ('sexo', 'Sexo')
+            ] %}
+            {% for var, label in otros %}
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="variables" value="{{ var }}">
+              <label class="form-check-label">{{ label }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <button type="submit">Procesar Clusterización</button>
+    <div class="mt-4 text-center">
+      <button type="submit" class="btn btn-primary btn-lg">Procesar Clusterización</button>
+    </div>
   </form>
-</body>
-</html>
+</div>
+{% endblock %}
