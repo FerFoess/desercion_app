@@ -14,19 +14,24 @@
   <!-- Menú de navegación -->
   <ul class="nav nav-tabs mb-4 justify-content-center" id="seccionesTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="resumen-tab" data-bs-toggle="tab" data-bs-target="#resumen" type="button" role="tab" aria-controls="resumen" aria-selected="true">📌 Clusters</button>
+      <button class="nav-link active" id="resumen-tab" data-bs-toggle="tab" data-bs-target="#resumen" type="button"
+        role="tab" aria-controls="resumen" aria-selected="true">📌 Clusters</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="datos-tab" data-bs-toggle="tab" data-bs-target="#datos" type="button" role="tab" aria-controls="datos" aria-selected="false">📄 Datos evaluados</button>
+      <button class="nav-link" id="datos-tab" data-bs-toggle="tab" data-bs-target="#datos" type="button" role="tab"
+        aria-controls="datos" aria-selected="false">📄 Datos evaluados</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="graficos-tab" data-bs-toggle="tab" data-bs-target="#graficos" type="button" role="tab" aria-controls="graficos" aria-selected="false">📊 Gráficos</button>
+      <button class="nav-link" id="graficos-tab" data-bs-toggle="tab" data-bs-target="#graficos" type="button"
+        role="tab" aria-controls="graficos" aria-selected="false">📊 Gráficos</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="exportar-tab" data-bs-toggle="tab" data-bs-target="#exportar" type="button" role="tab" aria-controls="exportar" aria-selected="false">📤 Exportar</button>
+      <button class="nav-link" id="exportar-tab" data-bs-toggle="tab" data-bs-target="#exportar" type="button"
+        role="tab" aria-controls="exportar" aria-selected="false">📤 Exportar</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="filtrar-tab" data-bs-toggle="tab" data-bs-target="#filtrar" type="button" role="tab" aria-controls="filtrar" aria-selected="false">🔍 Datos individuales</button>
+      <button class="nav-link" id="filtrar-tab" data-bs-toggle="tab" data-bs-target="#filtrar" type="button" role="tab"
+        aria-controls="filtrar" aria-selected="false">🔍 Datos individuales</button>
     </li>
   </ul>
 
@@ -50,18 +55,18 @@
                 <tr>
                   <th>Clúster</th>
                   {% for col in resultados.resumen_clusters.columns %}
-                    <th>{{ col }}</th>
+                  <th>{{ col }}</th>
                   {% endfor %}
                 </tr>
               </thead>
               <tbody>
                 {% for cluster, row in resultados.resumen_clusters.iterrows() %}
-                  <tr>
-                    <td>{{ cluster }}</td>
-                    {% for col in resultados.resumen_clusters.columns %}
-                      <td>{{ row[col]|round(2) }}</td>
-                    {% endfor %}
-                  </tr>
+                <tr>
+                  <td>{{ cluster }}</td>
+                  {% for col in resultados.resumen_clusters.columns %}
+                  <td>{{ row[col]|round(2) }}</td>
+                  {% endfor %}
+                </tr>
                 {% endfor %}
               </tbody>
             </table>
@@ -88,17 +93,17 @@
               <thead class="table-light">
                 <tr>
                   {% for col in resultados.datos_clusterizados.columns %}
-                    <th>{{ col }}</th>
+                  <th>{{ col }}</th>
                   {% endfor %}
                 </tr>
               </thead>
               <tbody>
                 {% for _, row in resultados.datos_clusterizados.iterrows() %}
-                  <tr>
-                    {% for col in resultados.datos_clusterizados.columns %}
-                      <td>{{ row[col] }}</td>
-                    {% endfor %}
-                  </tr>
+                <tr>
+                  {% for col in resultados.datos_clusterizados.columns %}
+                  <td>{{ row[col] }}</td>
+                  {% endfor %}
+                </tr>
                 {% endfor %}
               </tbody>
             </table>
@@ -125,7 +130,8 @@
               <div class="card shadow">
                 <div class="card-header">📈 Gráfico 1</div>
                 <div class="card-body text-center">
-                  <img src="{{ url_for('static', filename=resultados.grafica1) }}" class="img-fluid rounded" alt="Gráfico 1">
+                  <img src="{{ url_for('static', filename=resultados.grafica1) }}" class="img-fluid rounded"
+                    alt="Gráfico 1">
                 </div>
               </div>
             </div>
@@ -133,7 +139,8 @@
               <div class="card shadow">
                 <div class="card-header">📊 Gráfico 2</div>
                 <div class="card-body text-center">
-                  <img src="{{ url_for('static', filename=resultados.grafica2) }}" class="img-fluid rounded" alt="Gráfico 2">
+                  <img src="{{ url_for('static', filename=resultados.grafica2) }}" class="img-fluid rounded"
+                    alt="Gráfico 2">
                 </div>
               </div>
             </div>
@@ -186,7 +193,7 @@
   </div>
 </div>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('DOMContentLoaded', function () {
     filtrarRiesgo();
   });
 
@@ -197,36 +204,38 @@
     const nivel = document.getElementById('nivel_riesgo').value;
     console.log("Nivel de riesgo seleccionado:", nivel);
 
-const data = {{ resultados.datos_clusterizados.to_json(orient="records")|tojson|safe }};
-console.log("Tipo de data:", typeof data);
-console.log("¿Es arreglo?:", Array.isArray(data));
+    const data = {{ resultados.datos_clusterizados.to_json("records") | safe
+  }};
+  }};
+  console.log("Tipo de data:", typeof data);
+  console.log("¿Es arreglo?:", Array.isArray(data));
 
 
 
-    console.log("Datos totales:", data);
-    const dataParseada = JSON.parse(data);
-const filtrados = dataParseada.filter(r => r.etiqueta_riesgo === nivel);
+  console.log("Datos totales:", data);
+  const dataParseada = JSON.parse(data);
+  const filtrados = dataParseada.filter(r => r.etiqueta_riesgo === nivel);
 
 
-    console.log("Datos filtrados:", filtrados);
+  console.log("Datos filtrados:", filtrados);
 
-    if (filtrados.length === 0) {
-      document.getElementById('tabla-filtrada').innerHTML = "<p>No hay datos para este nivel de riesgo.</p>";
-      return;
-    }
+  if (filtrados.length === 0) {
+    document.getElementById('tabla-filtrada').innerHTML = "<p>No hay datos para este nivel de riesgo.</p>";
+    return;
+  }
 
-    const columnas = Object.keys(filtrados[0]);
-    let html = '<table class="table table-bordered table-hover table-sm"><thead><tr>';
-    columnas.forEach(c => html += `<th>${c}</th>`);
-    html += '</tr></thead><tbody>';
-    filtrados.forEach(r => {
-      html += '<tr>';
-      columnas.forEach(c => html += `<td>${r[c]}</td>`);
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
+  const columnas = Object.keys(filtrados[0]);
+  let html = '<table class="table table-bordered table-hover table-sm"><thead><tr>';
+  columnas.forEach(c => html += `<th>${c}</th>`);
+  html += '</tr></thead><tbody>';
+  filtrados.forEach(r => {
+    html += '<tr>';
+    columnas.forEach(c => html += `<td>${r[c]}</td>`);
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
 
-    document.getElementById('tabla-filtrada').innerHTML = html;
+  document.getElementById('tabla-filtrada').innerHTML = html;
   }
 </script>
 

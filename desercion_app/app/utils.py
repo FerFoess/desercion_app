@@ -1,5 +1,6 @@
 import pandas as pd
 from fpdf import FPDF
+import seaborn as sns
 import os
 
 def generate_pdf(resultados, items):

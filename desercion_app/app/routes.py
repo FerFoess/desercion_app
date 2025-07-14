@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session
+import seaborn as sns
 from .logic.modelo import procesar_clusterizacion
 from .utils import generate_pdf, generate_excel
 
