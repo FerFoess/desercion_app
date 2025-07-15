@@ -1,28 +1,90 @@
 {% extends "base.html" %}
-{% block title %}Predicciones vs Valores Reales{% endblock %}
+
+{% block title %}Resultados: Predicciones vs Valores Reales{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-  <h1>Predicciones vs Valores Reales</h1>
-  <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-    <table class="table table-bordered table-striped table-hover">
-      <thead>
-        <tr>
-          {% for col in datos_predicciones.columns %}
-            <th>{{ col }}</th>
-          {% endfor %}
-        </tr>
-      </thead>
-      <tbody>
-        {% for _, row in datos_predicciones.iterrows() %}
-          <tr>
-            {% for col in datos_predicciones.columns %}
-              <td>{{ row[col] }}</td>
-            {% endfor %}
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div class="container mt-5">
+  <h1 class="mb-4 display-6">📋 Predicciones del Modelo vs Valores Reales</h1>
+
+  <p class="lead text-muted">
+    Visualiza los resultados del modelo para cada estudiante. Puedes analizar la predicción realizada, su probabilidad, y compararla con el valor real.
+  </p>
+
+  <!-- Descripción de columnas -->
+  <div class="alert alert-light border mb-4">
+    <h6 class="mb-2">📘 Descripción de las columnas:</h6>
+    <ul class="mb-0 small">
+      {% if 'y_real' in datos_predicciones.columns %}
+        <li><strong>y_real:</strong> Valor real observado (1 = desertó, 0 = no desertó).</li>
+      {% endif %}
+      {% if 'y_predicho' in datos_predicciones.columns %}
+        <li><strong>y_predicho:</strong> Resultado predicho por el modelo.</li>
+      {% endif %}
+      {% if 'probabilidad' in datos_predicciones.columns %}
+        <li><strong>probabilidad:</strong> Confianza del modelo en la predicción (0 a 1).</li>
+      {% endif %}
+    </ul>
   </div>
-  <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-3">← Volver</a>
+
+  <!-- Tabla de resultados -->
+  <div class="table-responsive rounded shadow-sm" style="max-height: 550px; overflow-y: auto;" id="tabla-filtrada">
+    <!-- Aquí se llenará la tabla mediante JavaScript -->
+  </div>
+
+  <!-- Botones de acción -->
+  <div class="mt-4 d-flex flex-wrap gap-2">
+    <a href="{{ url_for('main.resultados_metrica') }}" class="btn btn-outline-primary">
+      📊 Ver Métricas
+    </a>
+    <a href="{{ url_for('main.resultados_graficos') }}" class="btn btn-outline-success">
+      📈 Ver Gráficos
+    </a>
+    <a href="{{ url_for('main.resultados_exportar') }}" class="btn btn-outline-dark">
+      📤 Exportar Resultados
+    </a>
+    <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+      ← Volver al Inicio
+    </a>
+  </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    fetch('/resultados/datos_json')  // Realizamos la solicitud AJAX a la nueva ruta
+      .then(response => response.json())  // Convertimos la respuesta en JSON
+      .then(data => {
+        console.log("Datos recibidos:", data);
+        mostrarTabla(data);  // Llamamos a la función para mostrar los datos en la tabla
+      })
+      .catch(error => {
+        console.error("Error al obtener los datos:", error);
+      });
+  });
+
+  // Función para mostrar la tabla
+  function mostrarTabla(datos) {
+    if (datos.length === 0) {
+      document.getElementById("tabla-filtrada").innerHTML = "<p class='text-muted'>❌ No se encontraron coincidencias con los filtros seleccionados.</p>";
+      return;
+    }
+
+    // Obtener las columnas de la primera fila
+    const columnas = Object.keys(datos[0]);
+    let html = '<table class="table table-striped table-bordered table-sm table-hover align-middle">';
+    html += '<thead class="table-light sticky-top"><tr>';
+    columnas.forEach(col => html += `<th>${col}</th>`);
+    html += '</tr></thead><tbody>';
+    
+    // Agregar los datos de las filas
+    datos.forEach(row => {
+      html += '<tr>';
+      columnas.forEach(col => html += `<td>${row[col]}</td>`);
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+    document.getElementById("tabla-filtrada").innerHTML = html;
+  }
+</script>
+
 {% endblock %}

@@ -1,12 +1,14 @@
 import os
 import json
 import pandas as pd
+import matplotlib.pyplot as plt
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session
 from .logic.modelo import entrenar_y_predecir
 from .utils import generate_pdf, generate_excel
 from .logic.datos import codificar_datos
 
 bp = Blueprint('main', __name__)
+
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -28,17 +30,17 @@ def index():
         archivo_prediccion.save(ruta_prediccion)
 
         try:
-            # Leer los archivos CSV
             df_train = pd.read_csv(ruta_entrenamiento)
             df_pred = pd.read_csv(ruta_prediccion)
 
-            # Codificar los datos (eliminamos NaN y renombramos las columnas)
             df_train = codificar_datos(df_train, es_prediccion=False)
             df_pred = codificar_datos(df_pred, es_prediccion=True)
 
-            # Vista previa de los datos
             preview_train = df_train.head(30).to_html(classes='table table-striped table-bordered', index=False)
             preview_pred = df_pred.head(30).to_html(classes='table table-striped table-bordered', index=False)
+
+            # Guardamos las columnas de predicción para usar luego en selección de variables
+            session['columnas_pred'] = df_pred.columns.tolist()
 
         except Exception as e:
             flash(f"No se pudieron leer los archivos: {e}")
@@ -57,8 +59,6 @@ def index():
 
     return render_template('index.html')
 
-
-
 @bp.route('/procesar', methods=['POST'])
 def procesar():
     csv_train_path = session.get('csv_train_path')
@@ -76,29 +76,25 @@ def procesar():
 
     try:
         resultados = entrenar_y_predecir(csv_train_path, csv_predict_path, limite_datos=limite)
-        # Verificar si los resultados se están guardando correctamente
-        print("Resultados generados:", resultados)
-
     except Exception as e:
         flash(f"Error al aplicar regresión logística: {str(e)}")
         return redirect(url_for('main.index'))
 
-    # Guardamos todo el diccionario de resultados en la sesión
     resultados_sesion = {}
-
     for k, v in resultados.items():
         if isinstance(v, pd.DataFrame):
             resultados_sesion[k] = v.to_dict(orient='records')
         else:
             resultados_sesion[k] = v
 
-    # Imprimir los resultados que se están guardando
-    print("Resultados guardados en la sesión:", resultados_sesion)
-
     session['resultados'] = resultados_sesion
 
-    return redirect(url_for('main.resultados_metrica'))
+    # Extraemos columnas del DataFrame de predicción procesado para checkboxes
+    if 'datos_predicciones' in resultados_sesion:
+        df_pred = pd.DataFrame(resultados_sesion['datos_predicciones'])
+        session['columnas_pred'] = df_pred.columns.tolist()
 
+    return redirect(url_for('main.resultados_metrica'))
 
 @bp.route('/resultados/metrica')
 def resultados_metrica():
@@ -114,19 +110,54 @@ def resultados_predicciones():
     if not resultados or 'datos_predicciones' not in resultados:
         flash("No hay resultados para mostrar.")
         return redirect(url_for('main.index'))
-    # Reconstruimos dataframe para renderizar
-    df_pred = pd.DataFrame(resultados['datos_predicciones'])
-    return render_template('resultados_predicciones.html', datos_predicciones=df_pred)
+    datos_predicciones = resultados['datos_predicciones']
+    return render_template('resultados_predicciones.html', datos_predicciones=datos_predicciones)
 
-@bp.route('/resultados/graficos')
+@bp.route('/resultados/graficos', methods=['GET', 'POST'])
 def resultados_graficos():
     resultados = session.get('resultados')
-    if not resultados or 'grafico_roc' not in resultados or 'grafico_prec_rec' not in resultados:
-        flash("No hay resultados para mostrar.")
+    if not resultados or 'datos_predicciones' not in resultados:
+        flash("No hay datos disponibles para graficar.")
         return redirect(url_for('main.index'))
-    return render_template('resultados_graficos.html', 
-                           grafico_roc=resultados['grafico_roc'], 
-                           grafico_prec_rec=resultados['grafico_prec_rec'])
+
+    columnas = session.get('columnas_pred', [])
+    df = pd.DataFrame(resultados['datos_predicciones'])
+    grafico_generado = None
+
+    if request.method == 'POST':
+        tipo = request.form.get('tipo')
+        variables = request.form.getlist('variables')
+
+        if tipo and len(variables) >= 1:
+            static_dir = os.path.join('app', 'static')
+            os.makedirs(static_dir, exist_ok=True)
+            filename = f'grafico_{tipo}.png'
+            ruta = os.path.join(static_dir, filename)
+
+            try:
+                plt.figure(figsize=(8, 6))
+                if tipo == 'histograma':
+                    df[variables[0]].hist()
+                elif tipo == 'barras' and len(variables) == 2:
+                    df.groupby(variables[0])[variables[1]].mean().plot(kind='bar')
+                elif tipo == 'dispersion' and len(variables) == 2:
+                    df.plot.scatter(x=variables[0], y=variables[1])
+                elif tipo == 'caja' and len(variables) == 1:
+                    df.boxplot(column=variables[0])
+                else:
+                    flash("Parámetros inválidos para el tipo de gráfico seleccionado.")
+                    return redirect(url_for('main.resultados_graficos'))
+
+                plt.title(f"Gráfico: {tipo}")
+                plt.tight_layout()
+                plt.savefig(ruta)
+                plt.close()
+                grafico_generado = filename
+            except Exception as e:
+                flash(f"Error al generar el gráfico: {e}")
+                return redirect(url_for('main.resultados_graficos'))
+
+    return render_template('resultados_graficos.html', columnas=columnas, grafico_generado=grafico_generado)
 
 @bp.route('/resultados/exportar')
 def resultados_exportar():
@@ -174,3 +205,14 @@ def export_excel():
     except Exception as e:
         flash(f"No se pudo generar el Excel: {e}")
         return redirect(url_for('main.index'))
+
+@bp.route('/resultados/datos_json')
+def resultados_datos_json():
+    resultados = session.get('resultados')
+    if not resultados or 'datos_predicciones' not in resultados:
+        flash("No hay resultados para mostrar.")
+        return redirect(url_for('main.index'))
+
+    df_pred = pd.DataFrame(resultados['datos_predicciones'])
+    datos_json = df_pred.to_dict(orient='records')
+    return json.dumps(datos_json)

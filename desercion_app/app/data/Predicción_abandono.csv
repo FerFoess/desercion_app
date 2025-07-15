@@ -1,0 +1,101 @@
+nombre,edad,sexo,nivel_escolar,promedio,reprobo_materia,materias_reprobadas,Te sientes motivadoa a seguir estudiando,Asistencia promedio en % asistencia a clases,dificultad_materias,horas_estudio,Te sientes estresadoa con tus estudios actualmente,considera_abandonar,condicion_medica,vive_con_tutores,apoyo_familiar,conflictos_casa,trabaja,trabaja_apoyo,economia_dificulta,Tienes acceso a recursos escolares internet libros computadora,interes_terminar,orientacion,conoce_apoyos
+Maria Teresa Citlali Fonseca Cornejo,2,2,2,8.5,0,5.0,3,1,0,2,0,1,0,0,2,0,1,0,0,0,1,1,0
+Espartaco Montoya,2,1,2,9.5,1,0.0,1,2,0,2,1,0,0,0,2,0,0,0,0,0,0,0,0
+Jacinto Ramiro Ramirez Zapata,1,1,0,9.0,1,0.0,2,1,0,2,1,0,0,0,1,0,1,0,0,0,0,0,0
+Maria Teresa Citlali Fonseca Cornejo,2,2,2,8.5,0,5.0,3,1,0,2,0,1,0,0,2,0,1,0,0,0,1,1,0
+Nancy Pelayo Soria,2,1,1,9.0,1,0.0,2,1,1,2,1,0,0,0,1,1,0,0,0,0,0,0,0
+Guadalupe Rocio Cazares,2,1,1,9.9,1,0.0,2,2,1,1,1,0,0,0,1,0,0,1,1,0,0,0,1
+Luisa Velez,2,1,2,9.5,1,0.0,1,2,0,2,1,0,0,1,1,0,0,0,0,0,0,0,0
+Maria Teresa Citlali Fonseca Cornejo,2,2,2,8.5,0,5.0,3,1,0,2,0,1,0,0,2,0,1,0,0,0,1,1,0
+Joaquin Bustamante,2,1,1,9.7,1,0.0,2,2,0,1,2,1,0,0,1,0,1,0,0,1,0,0,1
+Jose Maria Florez Guajardo,2,1,1,8.5,0,2.0,1,1,0,2,2,0,0,0,1,0,1,0,0,0,0,1,0
+Dr Bruno Cervantez,3,1,2,7.9,0,3.0,3,3,0,2,0,1,0,1,3,1,0,0,1,0,1,0,1
+Nadia Ariadna Villegas,2,1,2,9.17,1,14.0,2,2,0,1,1,0,0,1,1,1,0,0,0,0,0,1,0
+Isabel Mireles,2,2,2,9.2,1,0.0,1,2,1,2,1,0,0,0,1,0,1,0,0,0,0,0,0
+Nadia Ariadna Villegas,2,1,2,9.17,1,14.0,2,2,0,1,1,0,0,1,1,1,0,0,0,0,0,1,0
+Guadalupe Rocio Cazares,2,1,1,9.9,1,0.0,2,2,1,1,1,0,0,0,1,0,0,1,1,0,0,0,1
+Ing Mariano Riojas,2,2,2,9.0,0,1.0,2,2,1,2,1,0,0,1,2,0,0,0,0,0,0,1,0
+Maria Jose Matos Escamilla,2,1,2,8.5,1,0.0,1,2,0,2,1,1,0,0,1,0,1,1,1,0,0,0,0
+Maria Jose Matos Escamilla,2,1,2,8.5,1,0.0,1,2,0,2,1,1,0,0,1,0,1,1,1,0,0,0,0
+Ing Mariano Riojas,2,2,2,9.0,0,1.0,2,2,1,2,1,0,0,1,2,0,0,0,0,0,0,1,0
+Rolando Alfaro,2,2,2,8.0,0,1.0,3,1,0,2,0,1,0,0,2,1,0,1,0,0,0,0,1
+Maria Luisa Jonas Zamora,1,1,1,9.3,0,1.0,1,1,0,1,1,0,0,1,1,0,0,0,0,0,0,1,0
+Rolando Alfaro,2,2,2,8.0,0,1.0,3,1,0,2,0,1,0,0,2,1,0,1,0,0,0,0,1
+Ruby Alonso Merino,0,0,0,8.0,0,,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+Guadalupe Rocio Cazares,2,1,1,9.9,1,0.0,2,2,1,1,1,0,0,0,1,0,0,1,1,0,0,0,1
+Reina Bueno,1,1,1,9.4,1,0.0,1,2,0,2,1,0,0,0,1,0,1,0,0,0,0,0,0
+Dr Rosalia Corona,2,1,2,9.7,1,0.0,1,2,0,2,1,0,0,1,1,0,0,0,0,0,0,0,0
+Nadia Ariadna Villegas,2,1,2,9.17,1,14.0,2,2,0,1,1,0,0,1,1,1,0,0,0,0,0,1,0
+Dr Rosalia Corona,2,1,2,9.7,1,0.0,1,2,0,2,1,0,0,1,1,0,0,0,0,0,0,0,0
+Guadalupe Rocio Cazares,2,1,1,9.9,1,0.0,2,2,1,1,1,0,0,0,1,0,0,1,1,0,0,0,1
+Sra Dario Valladares,2,2,2,9.0,1,0.0,1,1,0,2,2,1,0,0,2,0,1,0,1,0,0,0,1
+Rocio Frida Curiel,2,2,2,0.0,1,0.0,1,2,1,1,1,0,0,0,2,0,1,1,1,0,0,0,1
+Lic Yolanda Castillo,2,1,2,8.0,1,0.0,2,1,1,2,1,0,1,1,1,0,1,0,0,0,0,0,0
+Maria Jose Matos Escamilla,2,1,2,8.5,1,0.0,1,2,0,2,1,1,0,0,1,0,1,1,1,0,0,0,0
+Maria Teresa Citlali Fonseca Cornejo,2,2,2,8.5,0,5.0,3,1,0,2,0,1,0,0,2,0,1,0,0,0,1,1,0
+Espartaco Montoya,2,1,2,9.5,1,0.0,1,2,0,2,1,0,0,0,2,0,0,0,0,0,0,0,0
+Rodolfo Porfirio Soria Villalobos,2,2,2,8.4,0,5.0,2,1,0,3,2,1,0,0,1,1,1,1,0,0,0,0,0
+Dr Bruno Cervantez,3,1,2,7.9,0,3.0,3,3,0,2,0,1,0,1,3,1,0,0,1,0,1,0,1
+Leonor Sosa,2,2,2,7.8,0,3.0,3,3,0,1,0,1,0,0,1,0,0,0,0,0,1,0,0
+Elsa Raul Saenz,2,1,2,8.0,0,2.0,3,3,0,2,0,1,0,0,1,1,0,1,0,0,0,1,1
+Dr Rosalia Corona,2,1,2,9.7,1,0.0,1,2,0,2,1,0,0,1,1,0,0,0,0,0,0,0,0
+Rolando Alfaro,2,2,2,8.0,0,1.0,3,1,0,2,0,1,0,0,2,1,0,1,0,0,0,0,1
+Nadia Ariadna Villegas,2,1,2,9.17,1,14.0,2,2,0,1,1,0,0,1,1,1,0,0,0,0,0,1,0
+Ing Mariano Riojas,2,2,2,9.0,0,1.0,2,2,1,2,1,0,0,1,2,0,0,0,0,0,0,1,0
+Claudia Osorio Ledesma,2,1,2,9.3,0,2.0,4,1,0,3,0,1,0,0,1,0,1,0,0,0,0,0,0
+Joaquin Bustamante,2,1,1,9.7,1,0.0,2,2,0,1,2,1,0,0,1,0,1,0,0,1,0,0,1
+Rolando Alfaro,2,2,2,8.0,0,1.0,3,1,0,2,0,1,0,0,2,1,0,1,0,0,0,0,1
+Lic Yolanda Castillo,2,1,2,8.0,1,0.0,2,1,1,2,1,0,1,1,1,0,1,0,0,0,0,0,0
+Espartaco Montoya,2,1,2,9.5,1,0.0,1,2,0,2,1,0,0,0,2,0,0,0,0,0,0,0,0
+Geronimo Villagomez Ramon,2,3,2,9.3,0,56423.0,4,3,0,3,2,1,0,0,1,0,0,0,0,0,2,0,1
+Dr Rosalia Corona,2,1,2,9.7,1,0.0,1,2,0,2,1,0,0,1,1,0,0,0,0,0,0,0,0
+Reina Mojica,2,1,2,8.6,1,0.0,2,1,1,1,1,1,0,0,1,0,0,0,1,0,0,1,0
+Adela Florencia Carrero Blanco,3,2,2,9.5,0,1.0,1,1,0,2,0,0,0,1,2,0,0,1,0,0,0,0,0
+Elsa Raul Saenz,2,1,2,8.0,0,2.0,3,3,0,2,0,1,0,0,1,1,0,1,0,0,0,1,1
+Guadalupe Rocio Cazares,2,1,1,9.9,1,0.0,2,2,1,1,1,0,0,0,1,0,0,1,1,0,0,0,1
+Jose Maria Florez Guajardo,2,1,1,8.5,0,2.0,1,1,0,2,2,0,0,0,1,0,1,0,0,0,0,1,0
+Mauricio Abraham Melendez Rojas,2,2,2,8.0,0,1.0,3,1,1,3,0,1,0,1,2,0,0,0,1,0,0,0,0
+Julia Antonia Lucio Leiva,3,1,2,9.0,1,0.0,2,2,1,2,1,0,0,1,1,0,0,1,0,0,0,1,0
+Geronimo Villagomez Ramon,2,3,2,9.3,0,56423.0,4,3,0,3,2,1,0,0,1,0,0,0,0,0,2,0,1
+Rolando Almonte,2,1,2,8.0,1,0.0,4,1,0,2,0,1,0,1,1,0,1,0,1,0,0,1,0
+Jacinto Cornelio Cruz,3,2,2,8.5,1,0.0,2,2,1,1,2,1,0,1,1,0,0,0,0,0,0,1,1
+Sonia Jaquez,1,1,1,8.0,0,1.0,1,1,0,2,1,0,1,0,1,0,1,0,0,0,0,0,0
+Julio Cesar Sara Fierro Lerma,2,2,2,9.0,1,0.0,2,2,1,1,2,0,0,0,1,0,1,1,0,0,0,1,0
+Julia Antonia Lucio Leiva,3,1,2,9.0,1,0.0,2,2,1,2,1,0,0,1,1,0,0,1,0,0,0,1,0
+Zacarias Camila Gonzalez Morales,2,2,2,8.8,1,0.0,2,1,1,2,2,0,0,0,1,0,0,0,0,0,0,0,0
+Maria Teresa Citlali Fonseca Cornejo,2,2,2,8.5,0,5.0,3,1,0,2,0,1,0,0,2,0,1,0,0,0,1,1,0
+Mauricio Abraham Melendez Rojas,2,2,2,8.0,0,1.0,3,1,1,3,0,1,0,1,2,0,0,0,1,0,0,0,0
+Nadia Ariadna Villegas,2,1,2,9.17,1,14.0,2,2,0,1,1,0,0,1,1,1,0,0,0,0,0,1,0
+Javier Blanca Acevedo de la Garza,2,2,2,9.1,1,0.0,2,2,0,4,1,0,0,0,1,0,1,0,0,0,0,1,0
+Dr Bruno Cervantez,3,1,2,7.9,0,3.0,3,3,0,2,0,1,0,1,3,1,0,0,1,0,1,0,1
+Rolando Alfaro,2,2,2,8.0,0,1.0,3,1,0,2,0,1,0,0,2,1,0,1,0,0,0,0,1
+Javier Blanca Acevedo de la Garza,2,2,2,9.1,1,0.0,2,2,0,4,1,0,0,0,1,0,1,0,0,0,0,1,0
+Esther Maria del Carmen Abreu,2,2,2,8.9,0,1.0,2,1,1,2,2,0,0,0,2,0,1,0,0,0,0,0,0
+Salvador Mireles Moreno,2,2,2,5.4,0,5.0,2,2,1,1,2,0,0,0,2,0,0,0,1,0,0,1,1
+Ing Maria Cristina Ramirez,2,1,2,9.0,1,0.0,3,1,1,2,0,1,0,1,2,0,0,0,1,0,0,0,1
+Guadalupe Rocio Cazares,2,1,1,9.9,1,0.0,2,2,1,1,1,0,0,0,1,0,0,1,1,0,0,0,1
+Joaquin Bustamante,2,1,1,9.7,1,0.0,2,2,0,1,2,1,0,0,1,0,1,0,0,1,0,0,1
+Javier Blanca Acevedo de la Garza,2,2,2,9.1,1,0.0,2,2,0,4,1,0,0,0,1,0,1,0,0,0,0,1,0
+Sonia Jaquez,1,1,1,8.0,0,1.0,1,1,0,2,1,0,1,0,1,0,1,0,0,0,0,0,0
+Esther Maria del Carmen Abreu,2,2,2,8.9,0,1.0,2,1,1,2,2,0,0,0,2,0,1,0,0,0,0,0,0
+Lic Yolanda Castillo,2,1,2,8.0,1,0.0,2,1,1,2,1,0,1,1,1,0,1,0,0,0,0,0,0
+Leonor Sosa,2,2,2,7.8,0,3.0,3,3,0,1,0,1,0,0,1,0,0,0,0,0,1,0,0
+Salvador Mireles Moreno,2,2,2,5.4,0,5.0,2,2,1,1,2,0,0,0,2,0,0,0,1,0,0,1,1
+Mauricio Abraham Melendez Rojas,2,2,2,8.0,0,1.0,3,1,1,3,0,1,0,1,2,0,0,0,1,0,0,0,0
+Nancy Pelayo Soria,2,1,1,9.0,1,0.0,2,1,1,2,1,0,0,0,1,1,0,0,0,0,0,0,0
+Rodolfo Porfirio Soria Villalobos,2,2,2,8.4,0,5.0,2,1,0,3,2,1,0,0,1,1,1,1,0,0,0,0,0
+Dr Rosalia Corona,2,1,2,9.7,1,0.0,1,2,0,2,1,0,0,1,1,0,0,0,0,0,0,0,0
+Ing Maria Cristina Ramirez,2,1,2,9.0,1,0.0,3,1,1,2,0,1,0,1,2,0,0,0,1,0,0,0,1
+Guadalupe Rocio Cazares,2,1,1,9.9,1,0.0,2,2,1,1,1,0,0,0,1,0,0,1,1,0,0,0,1
+Jacinto Cornelio Cruz,3,2,2,8.5,1,0.0,2,2,1,1,2,1,0,1,1,0,0,0,0,0,0,1,1
+Elsa Raul Saenz,2,1,2,8.0,0,2.0,3,3,0,2,0,1,0,0,1,1,0,1,0,0,0,1,1
+Rolando Ilse de Jesus,2,1,1,8.5,1,0.0,2,2,1,2,2,0,0,0,1,0,0,1,0,0,0,1,0
+Ing Maria Cristina Ramirez,2,1,2,9.0,1,0.0,3,1,1,2,0,1,0,1,2,0,0,0,1,0,0,0,1
+Julio Cesar Sara Fierro Lerma,2,2,2,9.0,1,0.0,2,2,1,1,2,0,0,0,1,0,1,1,0,0,0,1,0
+Gabino Homero Escobedo Juarez,2,2,2,9.3,0,5.0,2,1,1,2,1,0,0,0,2,1,0,0,0,0,0,0,1
+Isabel Mireles,2,2,2,9.2,1,0.0,1,2,1,2,1,0,0,0,1,0,1,0,0,0,0,0,0
+Guadalupe Rocio Cazares,2,1,1,9.9,1,0.0,2,2,1,1,1,0,0,0,1,0,0,1,1,0,0,0,1
+Rocio Frida Curiel,2,2,2,0.0,1,0.0,1,2,1,1,1,0,0,0,2,0,1,1,1,0,0,0,1
+Jacinto Ramiro Ramirez Zapata,1,1,0,9.0,1,0.0,2,1,0,2,1,0,0,0,1,0,1,0,0,0,0,0,0
+Sonia Jaquez,1,1,1,8.0,0,1.0,1,1,0,2,1,0,1,0,1,0,1,0,0,0,0,0,0
+Maria Luisa Jonas Zamora,1,1,1,9.3,0,1.0,1,1,0,1,1,0,0,1,1,0,0,0,0,0,0,1,0

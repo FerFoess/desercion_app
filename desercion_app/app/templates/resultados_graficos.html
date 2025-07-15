@@ -1,18 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Gráficos de Regresión Logística{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-  <h1>Gráficos generados</h1>
-  <div class="row">
-    <div class="col-md-6">
-      <h5>Curva ROC</h5>
-      <img src="{{ url_for('static', filename=grafico_roc) }}" class="img-fluid" alt="Curva ROC">
-    </div>
-    <div class="col-md-6">
-      <h5>Curva Precisión-Recall</h5>
-      <img src="{{ url_for('static', filename=grafico_prec_rec) }}" class="img-fluid" alt="Curva Precisión-Recall">
-    </div>
-  </div>
-  <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-3">← Volver</a>
+    <h2>Visualización de Resultados</h2>
+
+    <form method="POST">
+        <div class="form-group">
+            <label for="tipo">Tipo de gráfico:</label>
+            <select name="tipo" id="tipo" class="form-control" required>
+                <option value="">-- Selecciona un tipo --</option>
+                <option value="histograma">Histograma (1 variable)</option>
+                <option value="barras">Barras (2 variables)</option>
+                <option value="dispersion">Dispersión (2 variables)</option>
+                <option value="caja">Caja (1 variable)</option>
+            </select>
+        </div>
+
+        <div class="form-group mt-3">
+            <label>Selecciona variable(s):</label><br>
+            {% for col in columnas %}
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="checkbox" name="variables" value="{{ col }}" id="var_{{ loop.index }}">
+                    <label class="form-check-label" for="var_{{ loop.index }}">{{ col }}</label>
+                </div>
+            {% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Generar Gráfico</button>
+    </form>
+
+    {% if grafico_generado %}
+        <div class="mt-4">
+            <h4>Gráfico Generado:</h4>
+            <img src="{{ url_for('static', filename=grafico_generado) }}" class="img-fluid" alt="Gráfico generado">
+        </div>
+    {% endif %}
 </div>
 {% endblock %}
