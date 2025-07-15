@@ -1,10 +1,9 @@
 import os
 import json
 import pandas as pd
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session, after_this_request
-from .logic.modelo import procesar_clusterizacion
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session
+from .logic.modelo import entrenar_y_predecir
 from .utils import generate_pdf, generate_excel
-from datetime import datetime
 
 bp = Blueprint('main', __name__)
 
@@ -16,13 +15,11 @@ def index():
             flash('Por favor sube un archivo CSV válido.')
             return redirect(url_for('main.index'))
 
-        # Guardar archivo
         filename = archivo.filename
         filepath = os.path.join('desercion_app', 'app', 'data', filename)
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         archivo.save(filepath)
 
-        # Leer el CSV y generar vista previa
         try:
             df = pd.read_csv(filepath)
             preview_html = df.head(30).to_html(classes='table table-striped table-bordered', index=False)
@@ -30,52 +27,42 @@ def index():
             flash(f"No se pudo leer el archivo: {e}")
             return redirect(url_for('main.index'))
 
-        # Guardar ruta del archivo en sesión para procesar después
-        session['csv_path'] = filepath
-        session['csv_name'] = filename
+        session['csv_predict_path'] = filepath
+        session['csv_predict_name'] = filename
 
         return render_template('index.html', preview=preview_html, filename=filename)
 
     return render_template('index.html')
 
-
 @bp.route('/procesar', methods=['POST'])
 def procesar():
-    csv_path = session.get('csv_path')
-    if not csv_path or not os.path.exists(csv_path):
-        flash('Primero sube un archivo CSV válido.')
+    csv_path_predict = session.get('csv_predict_path')
+    if not csv_path_predict or not os.path.exists(csv_path_predict):
+        flash('Primero sube un archivo CSV válido para predicción.')
         return redirect(url_for('main.index'))
 
-    # Leer el límite de datos
     try:
         limite = int(request.form.get('limite_datos', 100))
     except ValueError:
         limite = 100
 
     try:
-        resultados = procesar_clusterizacion(csv_path, variables=None, n_clusters=3, limite_datos=limite)
+        # Archivo de entrenamiento fijo
+        csv_train_path = os.path.join('desercion_app', 'app', 'data', 'dataset_entrenamiento_abandono.csv')
+        resultados = entrenar_y_predecir(csv_train_path, csv_path_predict, limite_datos=limite)
     except Exception as e:
-        flash(f"Error al procesar la clusterización: {str(e)}")
+        flash(f"Error al aplicar regresión logística: {str(e)}")
         return redirect(url_for('main.index'))
 
-    # Guardar resultados para exportaciones
-    session['resultados'] = resultados["datos_clusterizados"].to_dict(orient='records')
-
-    # Preparar resultados para tabla HTML
-    resultados['resumen_clusters'] = resultados['resumen_clusters'].reset_index()
-    resultados['datos_clusterizados'] = resultados['datos_clusterizados'].reset_index()
+    session['resultados'] = resultados['datos_etiquetados'].to_dict(orient='records')
 
     return render_template('results.html', resultados=resultados)
-
 
 @bp.route('/export/pdf', methods=['POST'])
 def export_pdf():
     try:
-        items_raw = request.form.get('items', '[]')
-        print("📝 PDF items:", items_raw)
-        items = json.loads(items_raw)
+        items = json.loads(request.form.get('items', '[]'))
         resultados = session.get('resultados')
-
         if not resultados:
             flash('No hay resultados para exportar.')
             return redirect(url_for('main.index'))
@@ -89,11 +76,8 @@ def export_pdf():
 @bp.route('/export/excel', methods=['POST'])
 def export_excel():
     try:
-        items_raw = request.form.get('items', '[]')
-        print("📊 Excel items:", items_raw)
-        items = json.loads(items_raw)
+        items = json.loads(request.form.get('items', '[]'))
         resultados = session.get('resultados')
-
         if not resultados:
             flash('No hay resultados para exportar.')
             return redirect(url_for('main.index'))
