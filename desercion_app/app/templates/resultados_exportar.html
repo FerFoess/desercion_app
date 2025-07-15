@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Exportar Resultados{% endblock %}
+{% block content %}
+<div class="container mt-4 text-center">
+  <h1>Exportar Resultados</h1>
+  <form method="POST" action="{{ url_for('main.export_pdf') }}" class="d-inline-block me-3">
+    <button type="submit" class="btn btn-danger">📄 Exportar PDF</button>
+  </form>
+  <form method="POST" action="{{ url_for('main.export_excel') }}" class="d-inline-block">
+    <button type="submit" class="btn btn-success">📊 Exportar Excel</button>
+  </form>
+  <br>
+  <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-3">← Volver</a>
+</div>
+{% endblock %}

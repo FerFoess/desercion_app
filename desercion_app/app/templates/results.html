@@ -1,23 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Resultados de la Clusterización{% endblock %}
+{% block title %}Resultados de Regresión Logística{% endblock %}
 
 {% block content %}
 <div class="container mt-4 mb-5">
-  <h1 class="text-center mb-4">📊 Resultados de la Clusterización</h1>
-
-  <!-- Encabezado de clúster de alto riesgo -->
-  <div class="alert alert-info text-center">
-    <strong>Clúster considerado como "Alto riesgo de abandono":</strong>
-    <span class="badge bg-danger">{{ resultados.etiqueta_alto_riesgo }}</span>
-  </div>
+  <h1 class="text-center mb-4">📊 Resultados de Regresión Logística</h1>
 
   <!-- Menú de navegación -->
   <ul class="nav nav-tabs mb-4 justify-content-center" id="seccionesTabs" role="tablist">
     <li class="nav-item" role="presentation">
-      <button class="nav-link active" id="resumen-tab" data-bs-toggle="tab" data-bs-target="#resumen" type="button" role="tab" aria-controls="resumen" aria-selected="true">📌 Clusters</button>
+      <button class="nav-link active" id="metrica-tab" data-bs-toggle="tab" data-bs-target="#metrica" type="button" role="tab" aria-controls="metrica" aria-selected="true">📈 Métricas</button>
     </li>
     <li class="nav-item" role="presentation">
-      <button class="nav-link" id="datos-tab" data-bs-toggle="tab" data-bs-target="#datos" type="button" role="tab" aria-controls="datos" aria-selected="false">📄 Datos evaluados</button>
+      <button class="nav-link" id="predicciones-tab" data-bs-toggle="tab" data-bs-target="#predicciones" type="button" role="tab" aria-controls="predicciones" aria-selected="false">📄 Predicciones</button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="graficos-tab" data-bs-toggle="tab" data-bs-target="#graficos" type="button" role="tab" aria-controls="graficos" aria-selected="false">📊 Gráficos</button>
@@ -31,71 +25,47 @@
   </ul>
 
   <div class="tab-content" id="seccionesTabsContent">
-    <!-- Sección Clusters -->
-    <div class="tab-pane fade show active" id="resumen" role="tabpanel" aria-labelledby="resumen-tab">
+
+    <!-- Sección Métricas -->
+    <div class="tab-pane fade show active" id="metrica" role="tabpanel" aria-labelledby="metrica-tab">
       <div class="card shadow mb-4">
-        <div class="card-header bg-primary text-white">📌 Promedios por Clúster</div>
+        <div class="card-header bg-primary text-white">📈 Métricas del modelo</div>
         <div class="card-body">
-          <div class="form-check form-check-inline">
-            <input class="form-check-input pdf-item" type="checkbox" value="resumen" checked>
-            <label class="form-check-label">Incluir en PDF</label>
-          </div>
-          <div class="form-check form-check-inline">
-            <input class="form-check-input excel-item" type="checkbox" value="resumen" checked>
-            <label class="form-check-label">Incluir en Excel</label>
-          </div>
-          <div class="table-responsive mt-3">
-            <table class="table table-bordered table-striped table-hover">
-              <thead class="table-light">
-                <tr>
-                  <th>Clúster</th>
-                  {% for col in resultados.resumen_clusters.columns %}
-                    <th>{{ col }}</th>
-                  {% endfor %}
-                </tr>
-              </thead>
-              <tbody>
-                {% for cluster, row in resultados.resumen_clusters.iterrows() %}
-                  <tr>
-                    <td>{{ cluster }}</td>
-                    {% for col in resultados.resumen_clusters.columns %}
-                      <td>{{ row[col]|round(2) }}</td>
-                    {% endfor %}
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+          <ul>
+            {% for key, value in resultados.metricas.items() %}
+              <li><strong>{{ key }}:</strong> {{ "%.4f"|format(value) }}</li>
+            {% endfor %}
+          </ul>
         </div>
       </div>
     </div>
 
-    <!-- Sección Datos evaluados -->
-    <div class="tab-pane fade" id="datos" role="tabpanel" aria-labelledby="datos-tab">
+    <!-- Sección Predicciones -->
+    <div class="tab-pane fade" id="predicciones" role="tabpanel" aria-labelledby="predicciones-tab">
       <div class="card shadow mb-4">
-        <div class="card-header bg-primary text-white">📄 Datos procesados con etiquetas</div>
+        <div class="card-header bg-primary text-white">📄 Predicciones vs Valores reales</div>
         <div class="card-body">
           <div class="form-check form-check-inline">
-            <input class="form-check-input pdf-item" type="checkbox" value="datos" checked>
+            <input class="form-check-input pdf-item" type="checkbox" value="predicciones" checked>
             <label class="form-check-label">Incluir en PDF</label>
           </div>
           <div class="form-check form-check-inline">
-            <input class="form-check-input excel-item" type="checkbox" value="datos" checked>
+            <input class="form-check-input excel-item" type="checkbox" value="predicciones" checked>
             <label class="form-check-label">Incluir en Excel</label>
           </div>
           <div class="table-responsive mt-3" style="max-height: 400px; overflow-y: auto;">
             <table class="table table-bordered table-striped table-hover table-sm">
               <thead class="table-light">
                 <tr>
-                  {% for col in resultados.datos_clusterizados.columns %}
+                  {% for col in resultados.datos_predicciones.columns %}
                     <th>{{ col }}</th>
                   {% endfor %}
                 </tr>
               </thead>
               <tbody>
-                {% for _, row in resultados.datos_clusterizados.iterrows() %}
+                {% for _, row in resultados.datos_predicciones.iterrows() %}
                   <tr>
-                    {% for col in resultados.datos_clusterizados.columns %}
+                    {% for col in resultados.datos_predicciones.columns %}
                       <td>{{ row[col] }}</td>
                     {% endfor %}
                   </tr>
@@ -113,27 +83,27 @@
         <div class="card-header bg-primary text-white">📊 Gráficos generados</div>
         <div class="card-body">
           <div class="form-check">
-            <input class="form-check-input pdf-item" type="checkbox" value="grafico1" checked>
-            <label class="form-check-label">Incluir Gráfico 1 en PDF</label>
+            <input class="form-check-input pdf-item" type="checkbox" value="roc" checked>
+            <label class="form-check-label">Incluir ROC en PDF</label>
           </div>
           <div class="form-check">
-            <input class="form-check-input pdf-item" type="checkbox" value="grafico2" checked>
-            <label class="form-check-label">Incluir Gráfico 2 en PDF</label>
+            <input class="form-check-input pdf-item" type="checkbox" value="precision_recall" checked>
+            <label class="form-check-label">Incluir Curva Precisión-Recall en PDF</label>
           </div>
           <div class="row mt-4">
             <div class="col-md-6 mb-3">
               <div class="card shadow">
-                <div class="card-header">📈 Gráfico 1</div>
+                <div class="card-header">📈 Curva ROC</div>
                 <div class="card-body text-center">
-                  <img src="{{ url_for('static', filename=resultados.grafica1) }}" class="img-fluid rounded" alt="Gráfico 1">
+                  <img src="{{ url_for('static', filename=resultados.grafico_roc) }}" class="img-fluid rounded" alt="Curva ROC">
                 </div>
               </div>
             </div>
             <div class="col-md-6 mb-3">
               <div class="card shadow">
-                <div class="card-header">📊 Gráfico 2</div>
+                <div class="card-header">📊 Curva Precisión-Recall</div>
                 <div class="card-body text-center">
-                  <img src="{{ url_for('static', filename=resultados.grafica2) }}" class="img-fluid rounded" alt="Gráfico 2">
+                  <img src="{{ url_for('static', filename=resultados.grafico_prec_rec) }}" class="img-fluid rounded" alt="Curva Precisión-Recall">
                 </div>
               </div>
             </div>
@@ -143,34 +113,33 @@
     </div>
 
     <!-- Sección Exportar -->
-<div class="tab-pane fade" id="exportar" role="tabpanel" aria-labelledby="exportar-tab">
-  <div class="card shadow mb-4">
-    <div class="card-header bg-primary text-white">📤 Exportar resultados</div>
-    <div class="card-body text-center">
-      <form method="POST" action="{{ url_for('main.export_pdf') }}" id="form-pdf" class="d-inline-block me-3">
-        <input type="hidden" name="items" id="pdf-items" />
-        <button type="submit" class="btn btn-danger">📄 Exportar PDF</button>
-      </form>
-      <form method="POST" action="{{ url_for('main.export_excel') }}" id="form-excel" class="d-inline-block">
-        <input type="hidden" name="items" id="excel-items" />
-        <button type="submit" class="btn btn-success">📊 Exportar Excel</button>
-      </form>
+    <div class="tab-pane fade" id="exportar" role="tabpanel" aria-labelledby="exportar-tab">
+      <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">📤 Exportar resultados</div>
+        <div class="card-body text-center">
+          <form method="POST" action="{{ url_for('main.export_pdf') }}" id="form-pdf" class="d-inline-block me-3">
+            <input type="hidden" name="items" id="pdf-items" />
+            <button type="submit" class="btn btn-danger">📄 Exportar PDF</button>
+          </form>
+          <form method="POST" action="{{ url_for('main.export_excel') }}" id="form-excel" class="d-inline-block">
+            <input type="hidden" name="items" id="excel-items" />
+            <button type="submit" class="btn btn-success">📊 Exportar Excel</button>
+          </form>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-
 
     <!-- Sección Datos individuales -->
     <div class="tab-pane fade" id="filtrar" role="tabpanel" aria-labelledby="filtrar-tab">
       <div class="card shadow mb-4">
-        <div class="card-header bg-primary text-white">🔍 Filtrar por nivel de riesgo</div>
+        <div class="card-header bg-primary text-white">🔍 Filtrar por etiqueta de abandono</div>
         <div class="card-body">
-          <form onsubmit="filtrarRiesgo(event)">
+          <form onsubmit="filtrarAbandono(event)">
             <div class="input-group mb-3">
-              <label class="input-group-text" for="nivel_riesgo">Selecciona:</label>
-              <select class="form-select" id="nivel_riesgo" name="nivel_riesgo">
-                <option value="Alto riesgo de abandono">Alto riesgo de abandono</option>
-                <option value="Riesgo medio/bajo" selected>Riesgo medio/bajo</option>
+              <label class="input-group-text" for="etiqueta_abandono">Selecciona:</label>
+              <select class="form-select" id="etiqueta_abandono" name="etiqueta_abandono">
+                <option value="Sí">Sí</option>
+                <option value="No" selected>No</option>
               </select>
               <button class="btn btn-outline-primary" type="submit">Filtrar</button>
             </div>
@@ -180,38 +149,26 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <div class="text-center mt-4">
     <a href="{{ url_for('main.index') }}" class="btn btn-secondary">← Volver</a>
   </div>
 </div>
+
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    filtrarRiesgo();
-  });
-
-  function filtrarRiesgo(e) {
+  // Filtrado dinámico para datos individuales
+  function filtrarAbandono(e) {
     if (e) e.preventDefault();
-    console.log("Filtrando datos individuales...");
 
-    const nivel = document.getElementById('nivel_riesgo').value;
-    console.log("Nivel de riesgo seleccionado:", nivel);
+    const etiqueta = document.getElementById('etiqueta_abandono').value;
+    const data = {{ resultados.datos_predicciones.to_json(orient="records") | tojson | safe }};
 
-const data = {{ resultados.datos_clusterizados.to_json(orient="records")|tojson|safe }};
-console.log("Tipo de data:", typeof data);
-console.log("¿Es arreglo?:", Array.isArray(data));
-
-
-
-    console.log("Datos totales:", data);
-    const filtrados = data.filter(r => r.etiqueta_riesgo === nivel);
-
-
-    console.log("Datos filtrados:", filtrados);
+    const filtrados = data.filter(r => r.etiqueta_abandono === etiqueta);
 
     if (filtrados.length === 0) {
-      document.getElementById('tabla-filtrada').innerHTML = "<p>No hay datos para este nivel de riesgo.</p>";
+      document.getElementById('tabla-filtrada').innerHTML = "<p>No hay datos para esta etiqueta.</p>";
       return;
     }
 
@@ -228,26 +185,24 @@ console.log("¿Es arreglo?:", Array.isArray(data));
 
     document.getElementById('tabla-filtrada').innerHTML = html;
   }
-</script>
 
-<script>
+  // Export PDF/Excel: pasar opciones seleccionadas
   document.addEventListener('DOMContentLoaded', function () {
-    // Al enviar PDF
     document.getElementById('form-pdf').addEventListener('submit', function (e) {
       const checks = document.querySelectorAll('.pdf-item:checked');
       const items = Array.from(checks).map(c => c.value);
       document.getElementById('pdf-items').value = JSON.stringify(items);
     });
 
-    // Al enviar Excel
     document.getElementById('form-excel').addEventListener('submit', function (e) {
       const checks = document.querySelectorAll('.excel-item:checked');
       const items = Array.from(checks).map(c => c.value);
       document.getElementById('excel-items').value = JSON.stringify(items);
     });
+
+    // Inicializar filtro con datos
+    filtrarAbandono();
   });
 </script>
-
-
 
 {% endblock %}

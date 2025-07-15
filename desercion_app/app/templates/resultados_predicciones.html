@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Predicciones vs Valores Reales{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h1>Predicciones vs Valores Reales</h1>
+  <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+    <table class="table table-bordered table-striped table-hover">
+      <thead>
+        <tr>
+          {% for col in datos_predicciones.columns %}
+            <th>{{ col }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for _, row in datos_predicciones.iterrows() %}
+          <tr>
+            {% for col in datos_predicciones.columns %}
+              <td>{{ row[col] }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-3">← Volver</a>
+</div>
+{% endblock %}

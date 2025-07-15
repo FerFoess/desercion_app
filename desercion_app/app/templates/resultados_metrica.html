@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Métricas de Regresión Logística{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h1>Métricas del modelo</h1>
+  <ul>
+    {% for key, value in metricas.items() %}
+      <li><strong>{{ key }}:</strong> {{ "%.4f"|format(value) }}</li>
+    {% endfor %}
+  </ul>
+  <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-3">← Volver</a>
+</div>
+{% endblock %}

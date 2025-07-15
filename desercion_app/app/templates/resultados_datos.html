@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Datos Individuales{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h1>Filtrar por etiqueta de abandono</h1>
+  <form onsubmit="filtrarAbandono(event)" class="mb-3">
+    <label for="etiqueta_abandono">Selecciona etiqueta:</label>
+    <select id="etiqueta_abandono" name="etiqueta_abandono" class="form-select" style="max-width: 300px;">
+      <option value="Sí">Sí</option>
+      <option value="No" selected>No</option>
+    </select>
+    <button type="submit" class="btn btn-primary mt-2">Filtrar</button>
+  </form>
+
+  <div class="table-responsive" id="tabla-filtrada" style="max-height: 400px; overflow-y: auto;"></div>
+
+  <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-3">← Volver</a>
+</div>
+
+<script>
+  const data = {{ datos_predicciones.to_json(orient="records") | tojson | safe }};
+  function filtrarAbandono(e) {
+    if (e) e.preventDefault();
+    const etiqueta = document.getElementById('etiqueta_abandono').value;
+    const filtrados = data.filter(r => r.etiqueta_abandono === etiqueta);
+
+    if (filtrados.length === 0) {
+      document.getElementById('tabla-filtrada').innerHTML = "<p>No hay datos para esta etiqueta.</p>";
+      return;
+    }
+    const columnas = Object.keys(filtrados[0]);
+    let html = '<table class="table table-bordered table-hover table-sm"><thead><tr>';
+    columnas.forEach(c => html += `<th>${c}</th>`);
+    html += '</tr></thead><tbody>';
+    filtrados.forEach(r => {
+      html += '<tr>';
+      columnas.forEach(c => html += `<td>${r[c]}</td>`);
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('tabla-filtrada').innerHTML = html;
+  }
+
+  document.addEventListener('DOMContentLoaded', filtrarAbandono);
+</script>
+{% endblock %}
