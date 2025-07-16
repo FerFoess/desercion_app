@@ -1,25 +1,35 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2>Visualización de Resultados</h2>
+<div class="container my-5">
+    <h2 class="text-center mb-4">📊 Visualización de Resultados</h2>
 
     {% if graficos_brutos %}
-        <div class="mt-4">
-            <h4>Gráficos Exploratorios Generados:</h4>
-            <div class="row">
-                {% for graf in graficos_brutos %}
-                    <div class="col-md-6 mb-4 text-center">
-                        <h5>{{ graf.titulo }}</h5>
-                        <img src="{{ url_for('static', filename=graf.archivo) }}" class="img-fluid border rounded shadow-sm" alt="Gráfico bruto">
-                    </div>
-                {% endfor %}
+    <div class="row g-4">
+        {% for graf in graficos_brutos %}
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-header bg-primary text-white text-center">
+                    <h5 class="mb-0">{{ graf.titulo }}</h5>
+                </div>
+                <div class="card-body d-flex justify-content-center align-items-center">
+                    <img src="{{ url_for('static', filename=graf.archivo) }}" alt="Gráfico: {{ graf.titulo }}"
+                        class="img-fluid rounded" style="max-height: 350px;">
+                </div>
             </div>
         </div>
+        {% endfor %}
+    </div>
     {% else %}
-        <div class="alert alert-info mt-4">
-            No se encontraron datos suficientes para generar gráficos.
-        </div>
+    <div class="alert alert-info text-center mt-5">
+        No se encontraron datos suficientes para generar gráficos.
+    </div>
     {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+            ← Volver al inicio
+        </a>
+    </div>
 </div>
 {% endblock %}
