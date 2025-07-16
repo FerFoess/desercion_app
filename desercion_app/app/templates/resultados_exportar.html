@@ -3,12 +3,11 @@
 {% block content %}
 <div class="container mt-4 text-center">
   <h1>Exportar Resultados</h1>
-  <form method="POST" action="{{ url_for('main.export_pdf') }}" class="d-inline-block me-3">
-    <button type="submit" class="btn btn-danger">📄 Exportar PDF</button>
-  </form>
-  <form method="POST" action="{{ url_for('main.export_excel') }}" class="d-inline-block">
-    <button type="submit" class="btn btn-success">📊 Exportar Excel</button>
-  </form>
+  
+  <!-- Cambia los formularios por enlaces simples -->
+  <a href="{{ url_for('main.exportar_resultados', tipo='csv') }}" class="btn btn-danger me-3">📄 Exportar CSV</a>
+  <a href="{{ url_for('main.exportar_resultados', tipo='excel') }}" class="btn btn-success">📊 Exportar Excel</a>
+  
   <br>
   <a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-3">← Volver</a>
 </div>

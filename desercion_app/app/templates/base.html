@@ -6,7 +6,6 @@
     <title>{% block title %}Deserción App{% endblock %}</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-
 </head>
 
 <body>
@@ -19,24 +18,24 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
-                <!-- Cambiar los href del navbar -->
-<ul class="navbar-nav">
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('main.show_metrics') }}">Métricas</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('main.show_predictions') }}">Predicciones</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('main.show_graphs') }}">Gráficos</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('main.export_pdf') }}">Exportar PDF</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('main.export_excel') }}">Exportar Excel</a>
-    </li>
-</ul>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.mostrar_metricas') }}">Métricas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.predecir') }}">Predicciones</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('main.mostrar_metricas') }}">Gráficos</a>
+                    </li>
+                    <!-- Estos enlaces solo se muestran si hay resultados -->
+                    {% if 'resultados_prediccion' in session %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.exportar_resultados', tipo='csv') }}">Exportar CSV</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.exportar_resultados', tipo='excel') }}">Exportar Excel</a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
@@ -47,7 +46,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
 </body>
 
 </html>

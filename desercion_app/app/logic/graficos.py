@@ -8,74 +8,64 @@ from matplotlib.ticker import PercentFormatter
 import numpy as np
 
 def generar_graficos_brutos(df):
-    print(df)
-    # --- PASO 1: Renombrar columnas para estandarizar ---
-    df = df.rename(columns={
-        'considera_abandonar': 'abandono',  # Columna clave para gráficos
-        'dificultad_materias': 'dificultad_academica',
-        'conflictos_casa': 'problemas_familiares'  # Ejemplo adicional
-    })
+    graficos = []
     
-    # --- PASO 2: Asegurar que las columnas críticas existan ---
-    columnas_requeridas = {
-        'edad': 'numérica',
-        'asistencia': 'numérica',
-        'abandono': 'binaria (0/1)',
-        'promedio': 'numérica',
-        'motivacion': 'numérica',
-        'estres': 'numérica',
-        'economia_dificulta': 'binaria (0/1)'
+    # Mapeo de columnas específicas de tu CSV
+    column_mapping = {
+        'abandono': 'considera_abandonar',
+        'dificultad_academica': 'dificultad_materias',
+        'problemas_familiares': 'conflictos_casa'
     }
     
-    for col, tipo in columnas_requeridas.items():
-        if col not in df.columns:
-            raise ValueError(f"Columna requerida faltante: '{col}' (tipo: {tipo})")
-
-    # --- PASO 3: Configuración inicial (original) ---
-    plt.style.use('seaborn')
-    img_dir = os.path.join('app', 'static', 'img', 'graficos')
-    os.makedirs(img_dir, exist_ok=True)
-    
-    # Limpieza de gráficos antiguos
-    for f in os.listdir(img_dir):
-        os.remove(os.path.join(img_dir, f))
-    
-    graficos = []
-
-    # --- PASO 4: Generación de gráficos (adaptada a tus columnas) ---
     try:
-        # 1. Gráfico de Edades (siempre disponible)
+        # 1. Gráfico de Edades (siempre funciona)
         plt.figure(figsize=(10, 6))
         sns.histplot(df['edad'], bins=12, kde=True, color='skyblue')
         plt.title('Distribución de Edades')
-        graficos.append(guardar_grafico('edad'))
+        graficos.append(guardar_grafico(plt, 'edad'))
+        plt.close()
         
-        # 2. Gráfico de Asistencia vs Abandono
-        plt.figure(figsize=(10, 6))
-        sns.boxplot(x='abandono', y='asistencia', data=df)
-        plt.title('Asistencia vs Intención de Abandono')
-        graficos.append(guardar_grafico('asistencia_abandono'))
+        # 2. Gráfico Asistencia vs Abandono (con columna mapeada)
+        if 'asistencia' in df.columns and column_mapping['abandono'] in df.columns:
+            plt.figure(figsize=(10, 6))
+            sns.boxplot(
+                x=column_mapping['abandono'], 
+                y='asistencia', 
+                data=df
+            )
+            plt.title('Asistencia vs Intención de Abandono')
+            graficos.append(guardar_grafico(plt, 'asistencia_abandono'))
+            plt.close()
         
-        # 3. Gráfico de Pastel - Abandono
-        plt.figure(figsize=(8, 8))
-        df['abandono'].value_counts().plot.pie(
-            autopct='%1.1f%%',
-            labels=['No abandonará', 'Sí abandonará']
-        )
-        plt.title('Intención de Abandono Escolar')
-        graficos.append(guardar_grafico('abandono_pastel'))
+        # 3. Gráfico de Correlación (con columnas numéricas)
+        numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns
+        if len(numeric_cols) > 1:
+            plt.figure(figsize=(12, 8))
+            sns.heatmap(df[numeric_cols].corr(), annot=True, cmap='coolwarm')
+            plt.title('Correlación entre Variables')
+            graficos.append(guardar_grafico(plt, 'correlacion'))
+            plt.close()
         
-        # 4. Factores de Riesgo (personalizado para tus columnas)
-        factores = ['motivacion', 'estres', 'economia_dificulta', 'dificultad_academica']
-        plt.figure(figsize=(12, 6))
-        df[factores].mean().sort_values().plot.barh(color='darkorange')
-        plt.title('Factores de Riesgo Promedio')
-        graficos.append(guardar_grafico('factores_riesgo'))
+        # 4. Gráfico Factores de Riesgo (personalizado para tus columnas)
+        risk_factors = [
+            'motivacion',
+            'estres',
+            'economia_dificulta',
+            column_mapping['dificultad_academica'],
+            column_mapping['problemas_familiares']
+        ]
+        existing_factors = [f for f in risk_factors if f in df.columns]
         
+        if existing_factors:
+            plt.figure(figsize=(12, 6))
+            df[existing_factors].mean().sort_values().plot.barh(color='darkorange')
+            plt.title('Factores de Riesgo Promedio')
+            graficos.append(guardar_grafico(plt, 'factores_riesgo'))
+            plt.close()
+            
     except Exception as e:
-        print(f"Error generando gráficos: {str(e)}")
-        raise  # Opcional: eliminar en producción
-
+        current_app.logger.error(f"Error generando gráficos: {str(e)}", exc_info=True)
+    
     return graficos
 
 def guardar_grafico(prefix):
