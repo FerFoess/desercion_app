@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Visualización de Resultados</h2>
+
+    {% if graficos_brutos %}
+        <div class="mt-4">
+            <h4>Gráficos Exploratorios Generados:</h4>
+            <div class="row">
+                {% for graf in graficos_brutos %}
+                    <div class="col-md-6 mb-4 text-center">
+                        <h5>{{ graf.titulo }}</h5>
+                        <img src="{{ url_for('static', filename=graf.archivo) }}" class="img-fluid border rounded shadow-sm" alt="Gráfico bruto">
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info mt-4">
+            No se encontraron datos suficientes para generar gráficos.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

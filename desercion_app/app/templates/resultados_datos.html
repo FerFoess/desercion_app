@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Explorador de Datos Individuales{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1 class="mb-4">🔍 Buscar Estudiantes por Características</h1>
+
+  <form id="filtro-form" onsubmit="filtrarDatos(event)" class="row g-3 mb-4">
+    <!-- Filtro por etiqueta -->
+    <div class="col-md-3">
+      <label for="etiqueta_abandono" class="form-label">Etiqueta de abandono:</label>
+      <select id="etiqueta_abandono" name="etiqueta_abandono" class="form-select">
+        <option value="">Todos</option>
+        <option value="Sí">Sí</option>
+        <option value="No">No</option>
+      </select>
+    </div>
+
+    <!-- Filtro por predicción -->
+    <div class="col-md-3">
+      <label for="abandono_predicho" class="form-label">Predicción del modelo:</label>
+      <select id="abandono_predicho" name="abandono_predicho" class="form-select">
+        <option value="">Todos</option>
+        <option value="1">Deserta</option>
+        <option value="0">No deserta</option>
+      </select>
+    </div>
+
+    <!-- Probabilidad mínima -->
+    <div class="col-md-3">
+      <label for="probabilidad_min" class="form-label">Probabilidad mínima:</label>
+      <input type="number" step="0.01" min="0" max="1" id="probabilidad_min" class="form-control" placeholder="ej. 0.2">
+    </div>
+
+    <!-- Probabilidad máxima -->
+    <div class="col-md-3">
+      <label for="probabilidad_max" class="form-label">Probabilidad máxima:</label>
+      <input type="number" step="0.01" min="0" max="1" id="probabilidad_max" class="form-control" placeholder="ej. 0.8">
+    </div>
+
+    <div class="col-md-12 d-flex gap-2">
+      <button type="submit" class="btn btn-primary">🔍 Filtrar</button>
+      <button type="button" onclick="resetFiltros()" class="btn btn-outline-secondary">🔄 Limpiar</button>
+      <a href="{{ url_for('main.index') }}" class="btn btn-secondary ms-auto">← Volver</a>
+    </div>
+  </form>
+
+  <!-- Aquí se mostrará la tabla filtrada -->
+  <div class="table-responsive" id="tabla-filtrada" style="max-height: 500px; overflow-y: auto;"></div>
+</div>
+
+<script>
+// Esperamos a que el DOM esté completamente cargado
+document.addEventListener("DOMContentLoaded", function() {
+  fetch('/resultados/datos_json')  // Realizamos la solicitud AJAX a la nueva ruta
+    .then(response => response.json())  // Convertimos la respuesta en JSON
+    .then(data => {
+      console.log("Datos recibidos:", data);
+      mostrarTabla(data);  // Llamamos a la función para mostrar los datos en la tabla
+    })
+    .catch(error => {
+      console.error("Error al obtener los datos:", error);
+    });
+});
+
+// Función para mostrar la tabla
+function mostrarTabla(datos) {
+  if (datos.length === 0) {
+    document.getElementById("tabla-filtrada").innerHTML = "<p class='text-muted'>❌ No se encontraron coincidencias con los filtros seleccionados.</p>";
+    return;
+  }
+
+  // Obtener las columnas de la primera fila
+  const columnas = Object.keys(datos[0]);
+  let html = '<table class="table table-striped table-bordered table-sm table-hover align-middle">';
+  html += '<thead class="table-light sticky-top"><tr>';
+  columnas.forEach(col => html += `<th>${col}</th>`);
+  html += '</tr></thead><tbody>';
+  
+  // Agregar los datos de las filas
+  datos.forEach(row => {
+    html += '<tr>';
+    columnas.forEach(col => html += `<td>${row[col]}</td>`);
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById("tabla-filtrada").innerHTML = html;
+}
+</script>
+
+{% endblock %}

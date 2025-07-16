@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Métricas de Regresión Logística{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1 class="mb-4">Métricas del Modelo de Regresión Logística</h1>
+
+  <!-- Tabla con métricas -->
+  <div class="table-responsive mb-4">
+    <table class="table table-striped align-middle">
+      <thead class="table-primary">
+        <tr>
+          <th>Métrica</th>
+          <th>Valor</th>
+          <th>¿Qué significa?</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key, value in metricas.items() %}
+        <tr>
+          <td><strong>{{ key }}</strong></td>
+          <td>{{ "%.4f"|format(value) }}</td>
+          <td>
+            {% if key == 'accuracy' %}
+              Proporción de predicciones correctas sobre el total. Un valor cercano a 1 indica que el modelo tiene una alta tasa de aciertos.
+            {% elif key == 'precision' %}
+              De todos los casos predichos como deserción, ¿cuántos realmente lo eran? Un valor alto indica que el modelo comete pocos falsos positivos.
+            {% elif key == 'recall' %}
+              De todos los casos reales de deserción, ¿cuántos fueron detectados? Un valor alto indica que el modelo detecta bien los desertores.
+            {% elif key == 'f1_score' %}
+              Promedio balanceado entre precisión y recall, útil para comparar modelos en problemas con clases desbalanceadas.
+            {% elif key == 'roc_auc' %}
+              Qué tan bien el modelo distingue entre desertores y no desertores. Un AUC cercano a 1 indica que el modelo es excelente para separar ambas clases.
+            {% else %}
+              Métrica del modelo.
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Gráfico de barras -->
+  <h3 class="mb-3">Visualización de las Métricas</h3>
+  <canvas id="metricsChart" height="120"></canvas>
+
+  <div class="mt-4">
+    <a href="{{ url_for('main.resultados_predicciones') }}" class="btn btn-outline-primary me-2">Ver Predicciones</a>
+    <a href="{{ url_for('main.resultados_graficos') }}" class="btn btn-outline-success me-2">Ver Más Gráficos</a>
+    <a href="{{ url_for('main.resultados_exportar') }}" class="btn btn-outline-dark me-2">Exportar</a>
+    <a href="{{ url_for('main.index') }}" class="btn btn-secondary">← Volver</a>
+  </div>
+
+  <!-- Información sobre la veracidad del modelo -->
+  <div class="mt-5 alert alert-info">
+    <h5><strong>¿Qué tan confiable es este modelo?</strong></h5>
+    <p>La veracidad de este modelo de regresión logística depende de varios factores:</p>
+    <ul>
+      <li><strong>Tamaño del conjunto de datos:</strong> A mayor cantidad de datos, mayor será la capacidad del modelo para generalizar y realizar predicciones precisas.</li>
+      <li><strong>Balance de clases:</strong> Si el modelo tiene muchos más casos de estudiantes que no desertan que de los que desertan, podría tener una mayor precisión, pero no ser efectivo para predecir desertores. Es importante verificar que el modelo esté aprendiendo de ambas clases correctamente.</li>
+      <li><strong>Evaluación de métricas:</strong> Las métricas como precisión, recall, y AUC te dirán si el modelo está cometiendo más errores de tipo falso positivo o falso negativo, y si está discriminando bien entre las clases.</li>
+    </ul>
+    <p>En resumen, si bien el modelo puede ser confiable, es fundamental evaluar todas las métricas y el comportamiento con los datos disponibles para asegurar que se está utilizando correctamente.</p>
+  </div>
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const metricsData = {{ metricas|tojson | safe }};
+  const metricNames = Object.keys(metricsData);
+  const metricValues = Object.values(metricsData);
+
+  const ctx = document.getElementById('metricsChart').getContext('2d');
+  const metricsChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: metricNames,
+      datasets: [{
+        label: 'Valor de Métrica',
+        data: metricValues,
+        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1,
+        borderRadius: 5
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 1,
+          title: { display: true, text: 'Valor', font: { size: 14 } }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}
