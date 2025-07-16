@@ -4,8 +4,40 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, auc, precision_recall_curve
 import matplotlib.pyplot as plt
 import os
+import uuid
+from flask import session
 
 from .datos import codificar_datos
+
+
+def guardar_datos_cache(df, tipo='entrenamiento'):
+    """Guarda un DataFrame en caché en disco"""
+    os.makedirs('app/data_cache', exist_ok=True)
+    cache_file = os.path.join('app/data_cache', f'{tipo}_{uuid.uuid4().hex[:8]}.pkl')
+    df.to_pickle(cache_file)  # Más eficiente que CSV/JSON
+    session[f'cache_file_{tipo}'] = cache_file  # Solo guardamos la ruta
+    return cache_file
+
+
+def cargar_datos_cache(tipo='entrenamiento'):
+    """Carga un DataFrame desde caché"""
+    cache_key = f'cache_file_{tipo}'
+    if cache_key in session:
+        cache_file = session[cache_key]
+        if os.path.exists(cache_file):
+            return pd.read_pickle(cache_file)
+    return None
+
+
+def limpiar_cache(tipo='entrenamiento'):
+    """Elimina archivos de caché"""
+    cache_key = f'cache_file_{tipo}'
+    if cache_key in session:
+        try:
+            os.remove(session[cache_key])
+        except:
+            pass
+        session.pop(cache_key, None)
 
 
 def entrenar_y_predecir(ruta_entrenamiento, ruta_prediccion, limite_datos=None, limite_prediccion=None):
@@ -18,6 +50,10 @@ def entrenar_y_predecir(ruta_entrenamiento, ruta_prediccion, limite_datos=None, 
         df_train = df_train.head(limite_datos)
     if limite_prediccion is not None:
         df_test_original = df_test_original.head(limite_prediccion)
+
+    # Guardar datos completos en caché
+    guardar_datos_cache(df_train, 'entrenamiento')
+    guardar_datos_cache(df_test_original, 'prediccion')
 
     # Codificar ambos
     df_train = codificar_datos(df_train)
@@ -63,6 +99,9 @@ def entrenar_y_predecir(ruta_entrenamiento, ruta_prediccion, limite_datos=None, 
     # Agregar 'abandono' si existe
     if 'abandono' in df_test_codificado.columns:
         df_pred_final['abandono'] = df_test_codificado['abandono']
+
+    # Guardar resultados en caché también
+    guardar_datos_cache(df_pred_final, 'resultados')
 
     # Métricas del entrenamiento
     y_train_pred = model.predict(X_train_scaled)

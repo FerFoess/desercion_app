@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Subir Predicción{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+  <h1 class="text-center mb-4">🔍 Subir Datos de Predicción</h1>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="alert alert-success">
+      {% for message in messages %}
+        <div>{{ message }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <form action="{{ url_for('main.subir_prediccion') }}" method="post" enctype="multipart/form-data" class="card shadow p-4 mb-4">
+    <div class="mb-3">
+      <label class="form-label"><strong>📁 Sube el archivo CSV de predicción:</strong></label>
+      <input type="file" name="archivo_prediccion" class="form-control" required>
+    </div>
+    <div class="text-center">
+      <button type="submit" class="btn btn-primary">📥 Cargar predicción</button>
+    </div>
+  </form>
+
+  {% if preview_pred %}
+  <div class="card shadow mt-4">
+    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+      🧾 Vista previa del archivo de predicción: {{ filename_pred }}
+      <button class="btn btn-sm btn-light" type="button" data-bs-toggle="collapse" data-bs-target="#vistaPrediccion">Mostrar / Ocultar</button>
+    </div>
+    <div id="vistaPrediccion" class="collapse show">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-striped table-hover table-bordered">
+            {{ preview_pred|safe }}
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if preview_pred and preview_train %}
+  <form action="{{ url_for('main.procesar') }}" method="post" class="card shadow p-4 mt-4">
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label for="limite_entrenamiento"><strong>🔧 Límite de datos para entrenar:</strong></label>
+        <input type="number" name="limite_entrenamiento" id="limite_entrenamiento" min="10" max="10000" value="100" class="form-control">
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="limite_prediccion"><strong>🔍 Límite de datos para predecir:</strong></label>
+        <input type="number" name="limite_prediccion" id="limite_prediccion" min="10" max="10000" value="100" class="form-control">
+      </div>
+    </div>
+    <div class="text-center mt-3">
+      <button type="submit" class="btn btn-success btn-lg">🚀 Procesar Regresión Logística</button>
+    </div>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

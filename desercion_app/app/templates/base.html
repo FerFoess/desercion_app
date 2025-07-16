@@ -19,21 +19,24 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.resultados_datos') }}">Datos Predicción</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.resultados_exportar') }}">Exportar Resultados</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.resultados_graficos') }}">Gráficos</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.resultados_metrica') }}">Métricas del algoritmo</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.resultados_predicciones') }}">Predicciones</a>
-                    </li>
+                <!-- Cambiar los href del navbar -->
+<ul class="navbar-nav">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('main.show_metrics') }}">Métricas</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('main.show_predictions') }}">Predicciones</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('main.show_graphs') }}">Gráficos</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('main.export_pdf') }}">Exportar PDF</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('main.export_excel') }}">Exportar Excel</a>
+    </li>
+</ul>
                 </ul>
             </div>
         </div>
