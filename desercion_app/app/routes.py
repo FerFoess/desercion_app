@@ -1,360 +1,277 @@
 import os
 import json
 import uuid
+import math
 import pandas as pd
 import matplotlib
-matplotlib.use('Agg') 
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, session
+import seaborn as sns
+from flask import (
+    Blueprint, render_template, request, redirect, 
+    url_for, flash, send_file, session, current_app
+)
+from werkzeug.utils import secure_filename
 from .logic.modelo import entrenar_y_predecir
 from .utils import generate_pdf, generate_excel
 from .logic.datos import codificar_datos
+from .logic.graficos import generar_graficos_brutos, obtener_graficos_guardados
+# En routes.py, reemplaza el almacenamiento en sesión por:
+from flask import current_app
+import os
 
+
+def guardar_datos_csv(df):
+    # Guardar el CSV en disco en lugar de la sesión
+    os.makedirs('app/data_cache', exist_ok=True)
+    cache_file = os.path.join('app/data_cache', f'temp_{uuid.uuid4().hex[:8]}.pkl')
+    df.to_pickle(cache_file)  # Más eficiente que JSON
+    session['cache_file'] = cache_file  # Solo guardamos la ruta
+    session['nombre_archivo'] = archivo.filename
+
+def cargar_datos_csv():
+    if 'cache_file' in session:
+        cache_file = session['cache_file']
+        if os.path.exists(cache_file):
+            return pd.read_pickle(cache_file)
+    return None
 
 bp = Blueprint('main', __name__)
 
-def guardar_grafico(figura, carpeta="app/static", prefijo="grafico"):
-    os.makedirs(carpeta, exist_ok=True)
-    nombre = f"{prefijo}_{uuid.uuid4().hex[:8]}.png"
-    ruta = os.path.join(carpeta, nombre)
-    figura.savefig(ruta, bbox_inches='tight')
-    plt.close(figura)
-    return nombre
+# Configuración
+ALLOWED_EXTENSIONS = {'csv'}
+ITEMS_PER_PAGE = 20
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def guardar_grafico(fig, prefix="plot"):
+    """Guarda gráficos en la carpeta static/img"""
+    img_dir = os.path.join(current_app.static_folder, 'img')
+    os.makedirs(img_dir, exist_ok=True)
+    filename = f"{prefix}_{uuid.uuid4().hex[:6]}.png"
+    filepath = os.path.join(img_dir, filename)
+    fig.savefig(filepath, bbox_inches='tight', dpi=100)
+    plt.close(fig)
+    return filename
+
+def clean_old_files(directory, prefix):
+    """Elimina archivos antiguos para evitar acumulación"""
+    for f in os.listdir(directory):
+        if f.startswith(prefix):
+            try:
+                os.remove(os.path.join(directory, f))
+            except Exception as e:
+                current_app.logger.error(f"Error eliminando {f}: {e}")
+
+
 
 @bp.route('/', methods=['GET', 'POST'])
 def index():
+    current_app.logger.info("Inicio de la ruta index")
+    pagina = request.args.get('pagina', 1, type=int)
+    por_pagina = 10
+
     if request.method == 'POST':
-        archivo_entrenamiento = request.files.get('archivo_entrenamiento')
-        archivo_prediccion = request.files.get('archivo_prediccion')
-
-        if (not archivo_entrenamiento or not archivo_entrenamiento.filename.endswith('.csv') or
-            not archivo_prediccion or not archivo_prediccion.filename.endswith('.csv')):
-            flash('Por favor sube archivos CSV válidos para entrenamiento y predicción.')
+        current_app.logger.debug("Método POST recibido")
+        
+        if 'archivo_entrenamiento' not in request.files:
+            current_app.logger.warning("No se recibió archivo en el request")
+            flash('No se seleccionó archivo', 'error')
             return redirect(url_for('main.index'))
+            
+        archivo = request.files['archivo_entrenamiento']
+        current_app.logger.info(f"Archivo recibido: {archivo.filename}")
+        
+        if archivo.filename == '':
+            current_app.logger.warning("Nombre de archivo vacío")
+            flash('No se seleccionó archivo', 'error')
+            return redirect(url_for('main.index'))
+            
+        if archivo and allowed_file(archivo.filename):
+            try:
+                df = pd.read_csv(archivo)
+                current_app.logger.info("CSV leído correctamente")
+                current_app.logger.debug(f"Columnas del CSV: {df.columns.tolist()}")
+                current_app.logger.debug(f"Muestra de datos:\n{df.head(2).to_string()}")
+                
+                guardar_datos_csv(df)
+                generar_graficos_brutos(df)
+                
+                flash('Archivo cargado correctamente', 'success')
+                return redirect(url_for('main.index'))
+            except Exception as e:
+                current_app.logger.error(f"Error al procesar archivo: {str(e)}", exc_info=True)
+                flash(f'Error: {str(e)}', 'error')
+                return redirect(url_for('main.index'))
 
-        data_dir = os.path.join('app', 'data')
-        os.makedirs(data_dir, exist_ok=True)
+    # Cargar datos
+    df = cargar_datos_csv()
+    datos_paginados = []
+    columnas = []
+    total_paginas = 1
+    
+    if df is not None:
+        current_app.logger.debug(f"Datos cargados desde caché. Columnas: {df.columns.tolist()}")
+        total_paginas = max(1, math.ceil(len(df) / por_pagina))
+        pagina = max(1, min(pagina, total_paginas))
+        inicio = (pagina - 1) * por_pagina
+        datos_paginados = df.iloc[inicio:inicio+por_pagina].to_dict('records')
+        columnas = df.columns.tolist()
+        current_app.logger.debug(f"Columnas a renderizar: {columnas}")
 
-        ruta_entrenamiento = os.path.join(data_dir, archivo_entrenamiento.filename)
-        ruta_prediccion = os.path.join(data_dir, archivo_prediccion.filename)
+    return render_template('index.html',
+                         datos_paginados=datos_paginados,
+                         columnas=columnas,
+                         pagina_actual=pagina,
+                         total_paginas=total_paginas,
+                         graficos_brutos=obtener_graficos_guardados(),
+                         nombre_archivo=session.get('nombre_archivo'))
 
-        archivo_entrenamiento.save(ruta_entrenamiento)
-        archivo_prediccion.save(ruta_prediccion)
-
+@bp.route('/limpiar', methods=['POST'])
+def limpiar_datos():
+    if 'cache_file' in session:
         try:
-            df_train = pd.read_csv(ruta_entrenamiento)
-            df_pred = pd.read_csv(ruta_prediccion)
-
-            df_train = codificar_datos(df_train, es_prediccion=False)
-            df_pred = codificar_datos(df_pred, es_prediccion=True)
-
-            preview_train = df_train.head(30).to_html(classes='table table-striped table-bordered', index=False)
-            preview_pred = df_pred.head(30).to_html(classes='table table-striped table-bordered', index=False)
-
-            session['columnas_pred'] = df_pred.columns.tolist()
-
-        except Exception as e:
-            flash(f"No se pudieron leer los archivos: {e}")
-            return redirect(url_for('main.index'))
-
-        session['csv_train_path'] = ruta_entrenamiento
-        session['csv_train_name'] = archivo_entrenamiento.filename
-        session['csv_predict_path'] = ruta_prediccion
-        session['csv_predict_name'] = archivo_prediccion.filename
-
-        return render_template('index.html', 
-                               preview_train=preview_train, 
-                               preview_pred=preview_pred,
-                               filename_train=archivo_entrenamiento.filename,
-                               filename_pred=archivo_prediccion.filename)
-
-    return render_template('index.html')
+            os.remove(session['cache_file'])
+        except:
+            pass
+        session.pop('cache_file', None)
+    session.pop('nombre_archivo', None)
+    flash('Datos reseteados', 'success')
+    return redirect(url_for('main.index'))
 
 @bp.route('/procesar', methods=['POST'])
 def procesar():
-    csv_train_path = session.get('csv_train_path')
-    csv_predict_path = session.get('csv_predict_path')
-
-    if (not csv_train_path or not os.path.exists(csv_train_path) or
-        not csv_predict_path or not os.path.exists(csv_predict_path)):
-        flash('Primero sube archivos CSV válidos para entrenamiento y predicción.')
+    if 'train_data' not in session or 'predict_data' not in session:
+        flash('Primero sube archivos válidos para entrenamiento y predicción', 'error')
         return redirect(url_for('main.index'))
-
+    
     try:
-        limite = int(request.form.get('limite_datos', 100))
-    except ValueError:
-        limite = 100
-
-    try:
-        resultados = entrenar_y_predecir(csv_train_path, csv_predict_path, limite_datos=limite)
+        # Obtener parámetros del formulario
+        limit = request.form.get('limit', 100, type=int)
+        
+        # Cargar datos
+        df_train = pd.read_json(session['train_data'])
+        df_pred = pd.read_json(session['predict_data'])
+        
+        # Procesamiento con el modelo
+        resultados = entrenar_y_predecir(df_train, df_pred, limit)
+        
+        # Guardar resultados en sesión
+        session['results'] = {
+            'metrics': resultados.get('metrics', {}),
+            'predictions': resultados.get('predictions', []),
+            'coefficients': resultados.get('coefficients', {}),
+            'feature_importance': resultados.get('feature_importance', {})
+        }
+        
+        return redirect(url_for('main.show_metrics'))
+        
     except Exception as e:
-        flash(f"Error al aplicar regresión logística: {str(e)}")
+        current_app.logger.error(f"Error en procesamiento: {str(e)}")
+        flash(f'Error en el procesamiento: {str(e)}', 'error')
         return redirect(url_for('main.index'))
 
-    resultados_sesion = {}
-    for k, v in resultados.items():
-        if isinstance(v, pd.DataFrame):
-            resultados_sesion[k] = v.to_dict(orient='records')
-        else:
-            resultados_sesion[k] = v
-
-    session['resultados'] = resultados_sesion
-
-    if 'datos_predicciones' in resultados_sesion:
-        df_pred = pd.DataFrame(resultados_sesion['datos_predicciones'])
-        session['columnas_pred'] = df_pred.columns.tolist()
-
-    return redirect(url_for('main.resultados_metrica'))
-
-@bp.route('/resultados/metrica')
-def resultados_metrica():
-    resultados = session.get('resultados')
-    if not resultados or 'metricas' not in resultados:
-        flash("No hay resultados para mostrar.")
+@bp.route('/resultados/metricas')
+def show_metrics():
+    if 'results' not in session:
+        flash('No hay resultados disponibles', 'error')
         return redirect(url_for('main.index'))
-    return render_template('resultados_metrica.html', metricas=resultados['metricas'])
+    
+    return render_template('resultados_metrica.html',
+                         metrics=session['results']['metrics'])
 
 @bp.route('/resultados/predicciones')
-def resultados_predicciones():
-    resultados = session.get('resultados')
-    if not resultados or 'datos_predicciones' not in resultados:
-        flash("No hay resultados para mostrar.")
+def show_predictions():
+    if 'results' not in session:
+        flash('No hay resultados disponibles', 'error')
         return redirect(url_for('main.index'))
-
-    datos_predicciones = resultados['datos_predicciones']
-    coef_dict = resultados.get('modelo_coeficientes', {})
-    coeficientes = list(coef_dict.items()) if coef_dict else []
-
-    # Interpretaciones alineadas con variables reales
-    interpretacion = {
-        'acceso_recursos': 'Media (acceso a recursos mejora permanencia)',
-        'apoyo_familiar': 'Alta (menos apoyo familiar, mayor abandono)',
-        'asistencia': 'Alta (más asistencia, menor riesgo)',
-        'condicion_medica': 'Media (condiciones médicas pueden afectar)',
-        'conflictos_casa': 'Alta (más conflictos, mayor abandono)',
-        'conoce_apoyos': 'Alta (si conoce apoyos, menor abandono)',
-        'considera_abandonar': 'Muy alta (indicador directo de intención)',
-        'dificultad_materias': 'Media (más dificultad, mayor riesgo)',
-        'economia_dificulta': 'Alta (problemas económicos aumentan abandono)',
-        'edad': 'Media (edad más alta puede relacionarse con abandono)',
-        'estres': 'Media (mayor estrés, más riesgo)',
-        'horas_estudio': 'Alta (menos horas, más abandono)',
-        'interes_terminar': 'Alta (menos interés, mayor abandono)',
-        'materias_reprobadas': 'Baja (poca influencia directa)',
-        'motivacion': 'Alta (menos motivación, más riesgo)',
-        'nivel_escolar': 'Media (niveles bajos pueden aumentar abandono)',
-        'orientacion': 'Media (falta de orientación influye)',
-        'promedio': 'Alta (promedio bajo, más abandono)',
-        'reprobo_materia': 'Alta (reprobar influye en abandono)',
-        'sexo': 'Baja (influencia leve entre géneros)',
-        'trabaja': 'Media (trabajar puede aumentar abandono)',
-        'trabaja_apoyo': 'Baja (trabajo con apoyo afecta poco)',
-        'vive_con_tutores': 'Baja (ligera influencia del entorno familiar)'
+    
+    # Interpretación de coeficientes
+    interpretation = {
+        'acceso_recursos': 'Media - Acceso a recursos mejora permanencia',
+        'asistencia': 'Alta - Más asistencia, menor riesgo',
+        'promedio': 'Alta - Promedio bajo aumenta riesgo',
+        # ... agregar más interpretaciones
     }
-
+    
     return render_template('resultados_predicciones.html',
-                           datos_predicciones=datos_predicciones,
-                           coeficientes=coeficientes,
-                           interpretacion=interpretacion)
+                         predictions=session['results']['predictions'],
+                         coefficients=session['results']['coefficients'],
+                         interpretation=interpretation)
 
-@bp.route('/resultados/graficos', methods=['GET', 'POST'])
-def resultados_graficos():
-    import glob
-    import seaborn as sns
-    from matplotlib import pyplot as plt
-
-    resultados = session.get('resultados')
-
-    if not resultados or 'datos_predicciones' not in resultados:
-        flash("No hay datos disponibles para graficar.")
+@bp.route('/resultados/graficos')
+def show_graphs():
+    if 'results' not in session:
+        flash('No hay resultados disponibles', 'error')
         return redirect(url_for('main.index'))
-
-    columnas = session.get('columnas_pred', [])
-    df = pd.DataFrame(resultados['datos_predicciones'])
-    grafico_generado = None
-    graficos_brutos = []
-
-    static_dir = os.path.join('app', 'static')
-    os.makedirs(static_dir, exist_ok=True)
-
-    # 🧹 Borrar gráficos brutos anteriores
-    for f in glob.glob(os.path.join(static_dir, "bruto_*.png")):
-        try:
-            os.remove(f)
-        except Exception as e:
-            print(f"No se pudo eliminar {f}: {e}")
-
-    # 🧠 Diccionario para nombres legibles
-    nombres_legibles = {
-        'sexo': 'sexo',
-        'nivel_escolar': 'trabaja',
-        'edad': 'edad',
-        'etiqueta_riesgo': 'etiqueta_riesgo',
-        'abandono_predicho': 'abandono_predicho',
-        'probabilidad_abandono': 'probabilidad_abandono',
-        'promedio': 'promedio',
-        'interes_terminar': 'interes_terminar',
-        'motivacion': 'motivacion',
-        'estres': 'Estrés Académico',
-    }
-
-    # 📊 Gráficos automáticos simples
-    columnas_brutas = ['sexo', 'nivel_escolar', 'edad', 'etiqueta_riesgo', 'abandono_predicho']
-
-    for col in columnas_brutas:
-        if col in df.columns:
-            try:
-                plt.figure(figsize=(7, 5))
-                df[col].value_counts().sort_index().plot(kind='bar', color='skyblue', edgecolor='black')
-                titulo = nombres_legibles.get(col, col.replace("_", " ").capitalize())
-                plt.title(f"Distribución de {titulo}")
-                plt.xlabel(titulo)
-                plt.ylabel("Frecuencia")
-                plt.xticks(rotation=45)
-                plt.tight_layout()
-
-                filename = f"bruto_{col}_{uuid.uuid4().hex[:6]}.png"
-                ruta = os.path.join(static_dir, filename)
-                plt.savefig(ruta)
-                plt.close()
-
-                graficos_brutos.append({'titulo': f"Distribución de {titulo}", 'archivo': filename})
-            except Exception as e:
-                print(f"Error al generar gráfico de {col}: {e}")
-
-    # 📊 Gráfico: Distribución de probabilidad de abandono
+    
+    # Generar gráficos automáticos
+    df = pd.DataFrame(session['results']['predictions'])
+    auto_plots = []
+    
+    # Gráfico de distribución de probabilidades
     if 'probabilidad_abandono' in df.columns:
-        try:
-            plt.figure(figsize=(7, 5))
-            sns.histplot(df['probabilidad_abandono'], bins=20, kde=True, color='orchid')
-            plt.title("Distribución de Probabilidad de Abandono")
-            plt.xlabel("Probabilidad")
-            plt.ylabel("Frecuencia")
-            plt.tight_layout()
-            filename = f"bruto_probabilidad_{uuid.uuid4().hex[:6]}.png"
-            plt.savefig(os.path.join(static_dir, filename))
-            plt.close()
-            graficos_brutos.append({'titulo': "Distribución de Probabilidad", 'archivo': filename})
-        except Exception as e:
-            print(f"Error al generar gráfico de probabilidad: {e}")
-
-    # 📊 Gráficos de relación con abandono_predicho
-    relaciones = ['promedio', 'interes_terminar', 'motivacion', 'estres']
-    for col in relaciones:
-        if col in df.columns and 'abandono_predicho' in df.columns:
-            try:
-                plt.figure(figsize=(7, 5))
-                sns.boxplot(data=df, x='abandono_predicho', y=col, palette='pastel')
-                titulo_y = nombres_legibles.get(col, col.replace("_", " ").capitalize())
-                plt.title(f"{titulo_y} según Abandono Predicho")
-                plt.xlabel("Abandono Predicho")
-                plt.ylabel(titulo_y)
-                plt.tight_layout()
-                filename = f"bruto_{col}_vs_abandono_{uuid.uuid4().hex[:6]}.png"
-                plt.savefig(os.path.join(static_dir, filename))
-                plt.close()
-                graficos_brutos.append({'titulo': f"{titulo_y} vs Abandono", 'archivo': filename})
-            except Exception as e:
-                print(f"Error al generar gráfico {col} vs abandono: {e}")
-
-    # 📥 POST: Gráfico manual generado por usuario
-    if request.method == 'POST':
-        tipo = request.form.get('tipo')
-        variables = request.form.getlist('variables')
-
-        if tipo and len(variables) >= 1:
-            filename = f'grafico_{tipo}_{uuid.uuid4().hex[:6]}.png'
-            ruta = os.path.join(static_dir, filename)
-
-            try:
-                plt.figure(figsize=(8, 6))
-
-                if tipo == 'histograma' and len(variables) == 1:
-                    df[variables[0]].hist(color='mediumpurple', edgecolor='black')
-
-                elif tipo == 'barras' and len(variables) == 2:
-                    df.groupby(variables[0])[variables[1]].mean().plot(kind='bar', color='salmon')
-
-                elif tipo == 'dispersion' and len(variables) == 2:
-                    sns.scatterplot(data=df, x=variables[0], y=variables[1], hue=variables[1], palette='coolwarm')
-
-                elif tipo == 'caja' and len(variables) == 1:
-                    sns.boxplot(data=df, y=variables[0], color='lightgreen')
-
-                else:
-                    flash("Parámetros inválidos para el tipo de gráfico seleccionado.")
-                    return redirect(url_for('main.resultados_graficos'))
-
-                plt.title(f"Gráfico: {tipo.capitalize()}")
-                plt.tight_layout()
-                plt.savefig(ruta)
-                plt.close()
-                grafico_generado = filename
-
-            except Exception as e:
-                flash(f"Error al generar el gráfico: {e}")
-                return redirect(url_for('main.resultados_graficos'))
-
+        fig, ax = plt.subplots(figsize=(8, 5))
+        sns.histplot(df['probabilidad_abandono'], bins=20, kde=True, ax=ax)
+        ax.set_title('Distribución de Probabilidades de Abandono')
+        filename = guardar_grafico(fig, 'prob_dist')
+        auto_plots.append({
+            'title': 'Distribución de Probabilidades',
+            'filename': filename
+        })
+    
+    # Gráfico de importancia de características
+    if session['results']['feature_importance']:
+        features = list(session['results']['feature_importance'].keys())
+        importance = list(session['results']['feature_importance'].values())
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.barplot(x=importance, y=features, palette='viridis', ax=ax)
+        ax.set_title('Importancia de Variables en la Predicción')
+        filename = guardar_grafico(fig, 'feature_imp')
+        auto_plots.append({
+            'title': 'Importancia de Variables',
+            'filename': filename
+        })
+    
     return render_template('resultados_graficos.html',
-                           columnas=columnas,
-                           grafico_generado=grafico_generado,
-                           graficos_brutos=graficos_brutos)
+                         auto_plots=auto_plots,
+                         columns=df.columns.tolist())
 
-
-@bp.route('/resultados/exportar')
-def resultados_exportar():
-    resultados = session.get('resultados')
-    if not resultados:
-        flash("No hay resultados para mostrar.")
-        return redirect(url_for('main.index'))
-    return render_template('resultados_exportar.html')
-
-@bp.route('/resultados/datos')
-def resultados_datos():
-    resultados = session.get('resultados')
-    if not resultados or 'datos_predicciones' not in resultados:
-        flash("No hay resultados para mostrar.")
-        return redirect(url_for('main.index'))
-    df_pred = pd.DataFrame(resultados['datos_predicciones'])
-    return render_template('resultados_datos.html', datos_predicciones=df_pred)
-
-@bp.route('/export/pdf', methods=['POST'])
+@bp.route('/exportar/pdf', methods=['POST'])
 def export_pdf():
+    if 'results' not in session:
+        flash('No hay resultados para exportar', 'error')
+        return redirect(url_for('main.index'))
+    
     try:
-        items = json.loads(request.form.get('items', '[]'))
-        resultados = session.get('resultados')
-        if not resultados:
-            flash('No hay resultados para exportar.')
-            return redirect(url_for('main.index'))
-
-        output_path = generate_pdf(resultados, items)
+        selected_items = request.form.getlist('export_items')
+        output_path = generate_pdf(session['results'], selected_items)
         return send_file(output_path, as_attachment=True)
     except Exception as e:
-        flash(f"No se pudo generar el PDF: {e}")
-        return redirect(url_for('main.index'))
+        current_app.logger.error(f"Error generando PDF: {str(e)}")
+        flash(f'Error al generar PDF: {str(e)}', 'error')
+        return redirect(url_for('main.show_metrics'))
 
-@bp.route('/export/excel', methods=['POST'])
+@bp.route('/exportar/excel', methods=['POST'])
 def export_excel():
+    if 'results' not in session:
+        flash('No hay resultados para exportar', 'error')
+        return redirect(url_for('main.index'))
+    
     try:
-        items = json.loads(request.form.get('items', '[]'))
-        resultados = session.get('resultados')
-        if not resultados:
-            flash('No hay resultados para exportar.')
-            return redirect(url_for('main.index'))
-
-        output_path = generate_excel(resultados, items)
+        selected_items = request.form.getlist('export_items')
+        output_path = generate_excel(session['results'], selected_items)
         return send_file(output_path, as_attachment=True)
     except Exception as e:
-        flash(f"No se pudo generar el Excel: {e}")
-        return redirect(url_for('main.index'))
+        current_app.logger.error(f"Error generando Excel: {str(e)}")
+        flash(f'Error al generar Excel: {str(e)}', 'error')
+        return redirect(url_for('main.show_metrics'))
 
-@bp.route('/resultados/datos_json')
-def resultados_datos_json():
-    resultados = session.get('resultados')
-    if not resultados or 'datos_predicciones' not in resultados:
-        flash("No hay resultados para mostrar.")
-        return redirect(url_for('main.index'))
-
-    df_pred = pd.DataFrame(resultados['datos_predicciones'])
-    datos_json = df_pred.to_dict(orient='records')
-    return json.dumps(datos_json)
+@bp.route('/limpiar', methods=['POST'])
+def clean_session():
+    """Limpia los datos de la sesión"""
+    session.clear()
+    flash('Datos reiniciados correctamente', 'success')
+    return redirect(url_for('main.index'))
