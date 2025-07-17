@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 import math
@@ -79,19 +80,27 @@ def limpiar_cache(tipo='all'):
         current_app.logger.error(f"Error limpiando caché: {str(e)}")
 
 def guardar_grafico(plt, prefix):
-    """Función auxiliar para guardar gráficos y devolver metadatos"""
+    """
+    Guarda el gráfico generado y devuelve el path relativo desde static.
+    """
+    # Crear el directorio si no existe: static/img/graficos
     img_dir = os.path.join(current_app.static_folder, 'img', 'graficos')
     os.makedirs(img_dir, exist_ok=True)
-    
+
+    # Generar un nombre único
     nombre_archivo = f"{prefix}_{uuid.uuid4().hex[:6]}.png"
+
+    # Ruta completa para guardar
     filepath = os.path.join(img_dir, nombre_archivo)
+
+    # Guardar y cerrar el gráfico
     plt.savefig(filepath, bbox_inches='tight', dpi=150)
     plt.close()
-    
-    return {
-        'titulo': prefix.replace('_', ' ').title(),
-        'nombre_archivo': f'img/graficos/{nombre_archivo}'
-    }
+
+    # Retornar solo la ruta relativa desde static, por ejemplo:
+    # 'img/graficos/train_edad_xxxxxx.png'
+    return f'img/graficos/{nombre_archivo}'
+
 
 def limpiar_graficos_anteriores(tipo='all'):
     """Elimina gráficos antiguos del tipo especificado"""
@@ -108,67 +117,84 @@ def limpiar_graficos_anteriores(tipo='all'):
 
 def generar_graficos_brutos(df, prefix='train'):
     graficos = []
-    
+
     try:
         # 1. Gráfico de Edades
         if 'edad' in df.columns:
             plt.figure(figsize=(10, 6))
             sns.histplot(df['edad'], bins=12, kde=True, color='skyblue')
             plt.title(f'Distribución de Edades ({prefix})')
-            graficos.append(guardar_grafico(plt, f'{prefix}_edad'))
-        
-        # 2. Gráfico Asistencia vs Abandono
+            graficos.append({
+                'titulo': 'Entrenamiento - Edad',
+                'nombre_archivo': guardar_grafico(plt, f'{prefix}_edad'),
+                'descripcion': 'Este gráfico muestra la distribución de edades de los estudiantes en el conjunto de datos de entrenamiento.'
+            })
+
+        # 2. Asistencia vs Abandono
         if 'asistencia' in df.columns and 'abandono' in df.columns:
             plt.figure(figsize=(10, 6))
             sns.boxplot(x='abandono', y='asistencia', data=df)
             plt.title(f'Asistencia vs Abandono ({prefix})')
-            graficos.append(guardar_grafico(plt, f'{prefix}_asistencia_abandono'))
-        
-        # 3. Gráfico de Correlación
+            graficos.append({
+                'titulo': 'Entrenamiento - Asistencia',
+                'nombre_archivo': guardar_grafico(plt, f'{prefix}_asistencia_abandono'),
+                'descripcion': 'Compara la asistencia media de quienes abandonaron frente a quienes no lo hicieron.'
+            })
+
+        # 3. Correlación entre variables
         numeric_cols = df.select_dtypes(include=['int64', 'float64']).columns
         if len(numeric_cols) > 1:
             plt.figure(figsize=(12, 8))
             sns.heatmap(df[numeric_cols].corr(), annot=True, cmap='coolwarm', fmt=".2f")
             plt.title(f'Correlación entre Variables ({prefix})')
-            graficos.append(guardar_grafico(plt, f'{prefix}_correlacion'))
-        
-        # 4. Gráfico Factores de Riesgo
-        risk_factors = [
-            'motivacion',
-            'estres',
-            'economia_dificulta',
-            'dificultad_materias',
-            'conflictos_casa'
-        ]
-        
+            graficos.append({
+                'titulo': 'Entrenamiento - Correlación',
+                'nombre_archivo': guardar_grafico(plt, f'{prefix}_correlacion'),
+                'descripcion': 'Mapa de calor que muestra cómo se relacionan numéricamente las variables.'
+            })
+
+        # 4. Factores de Riesgo
+        risk_factors = ['motivacion', 'estres', 'economia_dificulta', 'dificultad_materias', 'conflictos_casa']
         existing_factors = [f for f in risk_factors if f in df.columns]
-        
         if existing_factors:
             plt.figure(figsize=(12, 6))
             df[existing_factors].mean().sort_values().plot.barh(color='darkorange')
             plt.title(f'Factores de Riesgo Promedio ({prefix})')
             plt.xlabel('Valor Promedio')
-            graficos.append(guardar_grafico(plt, f'{prefix}_factores_riesgo'))
-        
-        # 5. Gráfico de Abandono por Nivel Escolar
+            graficos.append({
+                'titulo': 'Entrenamiento - Factores',
+                'nombre_archivo': guardar_grafico(plt, f'{prefix}_factores_riesgo'),
+                'descripcion': 'Promedio de diversos factores de riesgo que podrían influir en el abandono.'
+            })
+
+        # 5. Abandono por Nivel Escolar
         if 'nivel_escolar' in df.columns and 'abandono' in df.columns:
             plt.figure(figsize=(10, 6))
             sns.countplot(x='nivel_escolar', hue='abandono', data=df)
             plt.title(f'Abandono por Nivel Escolar ({prefix})')
             plt.xticks(rotation=45)
-            graficos.append(guardar_grafico(plt, f'{prefix}_abandono_nivel'))
-        
-        # 6. Gráfico de Motivación vs Promedio
+            graficos.append({
+                'titulo': 'Entrenamiento - Abandono',
+                'nombre_archivo': guardar_grafico(plt, f'{prefix}_abandono_nivel'),
+                'descripcion': 'Muestra cuántos estudiantes abandonaron según su nivel escolar.'
+            })
+
+        # 6. Motivación vs Promedio
         if 'motivacion' in df.columns and 'promedio' in df.columns:
             plt.figure(figsize=(10, 6))
             sns.scatterplot(x='motivacion', y='promedio', data=df, alpha=0.6)
             plt.title(f'Relación entre Motivación y Promedio ({prefix})')
-            graficos.append(guardar_grafico(plt, f'{prefix}_motivacion_promedio'))
-            
+            graficos.append({
+                'titulo': 'Entrenamiento - Motivación',
+                'nombre_archivo': guardar_grafico(plt, f'{prefix}_motivacion_promedio'),
+                'descripcion': 'Observa si existe relación entre el nivel de motivación y el promedio académico.'
+            })
+
     except Exception as e:
         current_app.logger.error(f"Error generando gráficos {prefix}: {str(e)}", exc_info=True)
-    
+
     return graficos
+
 
 def obtener_graficos_guardados(prefix=None):
     graficos = []
@@ -211,46 +237,55 @@ def index():
         if 'archivo_entrenamiento' not in request.files:
             flash('No se seleccionó archivo', 'error')
             return redirect(url_for('main.index'))
-            
+
         archivo = request.files['archivo_entrenamiento']
-        
         if archivo.filename == '':
             flash('No se seleccionó archivo', 'error')
             return redirect(url_for('main.index'))
-            
+
         if archivo and allowed_file(archivo.filename):
             try:
-                # Leer archivo según extensión
                 if archivo.filename.endswith('.csv'):
                     df = pd.read_csv(archivo)
                 else:
                     df = pd.read_excel(archivo)
-                
-                # Validar que tenga las columnas necesarias
+
                 if 'abandono' not in df.columns:
                     flash('El archivo debe contener una columna "abandono"', 'error')
                     return redirect(url_for('main.index'))
-                
-                # Guardar en caché
+
                 guardar_datos_cache(df, 'entrenamiento')
-                
-                # Limpiar gráficos antiguos y generar nuevos
                 limpiar_graficos_anteriores('train')
-                generar_graficos_brutos(df, 'train')
-                
+                graficos = generar_graficos_brutos(df, 'train')
+
+                # 👉 Guardamos en sesión
+                session['graficos_train'] = json.dumps(graficos)
+
                 flash('Archivo de entrenamiento cargado correctamente', 'success')
-                return redirect(url_for('main.index'))
+
+                total_paginas = max(1, math.ceil(len(df) / por_pagina))
+                datos_paginados = df.iloc[0:por_pagina].to_dict('records')
+
+                return render_template('index.html',
+                                       datos_paginados=datos_paginados,
+                                       columnas=df.columns.tolist(),
+                                       pagina_actual=1,
+                                       total_paginas=total_paginas,
+                                       graficos_brutos=graficos,
+                                       nombre_archivo=session.get('nombre_archivo_entrenamiento'),
+                                       modelo_entrenado='modelo_entrenado' in session)
             except Exception as e:
                 current_app.logger.error(f"Error al procesar archivo: {str(e)}", exc_info=True)
                 flash(f'Error: {str(e)}', 'error')
                 return redirect(url_for('main.index'))
 
-    # Cargar datos para mostrar
+    # GET
     df = cargar_datos_cache('entrenamiento')
     datos_paginados = []
     columnas = []
     total_paginas = 1
-    
+    graficos = []
+
     if df is not None:
         total_paginas = max(1, math.ceil(len(df) / por_pagina))
         pagina = max(1, min(pagina, total_paginas))
@@ -258,17 +293,20 @@ def index():
         datos_paginados = df.iloc[inicio:inicio+por_pagina].to_dict('records')
         columnas = df.columns.tolist()
 
-    # Obtener gráficos para mostrar
-    graficos = obtener_graficos_guardados('train')
-    
+        # 👉 Recuperamos gráficos desde sesión
+        if 'graficos_train' in session:
+            graficos = json.loads(session['graficos_train'])
+        else:
+            graficos = obtener_graficos_guardados('train')
+
     return render_template('index.html',
-                         datos_paginados=datos_paginados,
-                         columnas=columnas,
-                         pagina_actual=pagina,
-                         total_paginas=total_paginas,
-                         graficos_brutos=graficos,
-                         nombre_archivo=session.get('nombre_archivo_entrenamiento'),
-                         modelo_entrenado='modelo_entrenado' in session)
+                           datos_paginados=datos_paginados,
+                           columnas=columnas,
+                           pagina_actual=pagina,
+                           total_paginas=total_paginas,
+                           graficos_brutos=graficos,
+                           nombre_archivo=session.get('nombre_archivo_entrenamiento'),
+                           modelo_entrenado='modelo_entrenado' in session)
 
 @bp.route('/limpiar', methods=['POST'])
 def limpiar_datos():
