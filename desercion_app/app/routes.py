@@ -331,26 +331,19 @@ def entrenar():
             flash('No se pudieron cargar los datos de entrenamiento', 'error')
             return redirect(url_for('main.index'))
         
-        # Entrenar el modelo usando la función de modelo.py
+        # Entrenar el modelo
         modelo_entrenado = train_model(df)
         
         # Guardar el modelo en caché
         model_cache.save_model(modelo_entrenado)
         
-        # Guardar referencia en sesión
+        # Guardar en sesión y forzar el guardado
         session['modelo_entrenado'] = True
+        session.modified = True  # ← Esto es importante
         
-        # Generar gráficos de evaluación
-        y_train = df['abandono']
-        X_train = df.drop(columns=['abandono', 'nombre'], errors='ignore')
-        
-        # Cargar el modelo para obtener probabilidades
-        modelo_cargado = model_cache.load_model()
-        y_pred_proba = modelo_cargado['model'].predict_proba(
-            modelo_cargado['scaler'].transform(X_train)
-        )[:, 1]
-        
-        generate_model_graphs(y_train, y_pred_proba)
+        print("✅ Modelo entrenado y sesión actualizada:", session['modelo_entrenado'])
+        print("✅ Modelo entrenado y sesión actualizada:", session['modelo_entrenado'])
+
         
         flash('Modelo entrenado exitosamente', 'success')
         return redirect(url_for('main.mostrar_metricas'))
@@ -419,14 +412,25 @@ def predecir():
                 flash(f'Error: {str(e)}', 'error')
                 return redirect(url_for('main.predecir'))
     
-    # Cargar datos de predicción si existen
     df_pred = cargar_datos_cache('prediccion')
     
+    # Verificar si hay modelo entrenado (usa get para evitar KeyError)
+    modelo_entrenado = session.get('modelo_entrenado', False)
+    
+    # Debug: Imprime el estado para diagnóstico
+    print(f"DEBUG - Modelo entrenado: {modelo_entrenado}, Datos cargados: {df_pred is not None}")
+    print("DEBUG: modelo_entrenado =", session.get('modelo_entrenado'))
+    print("DEBUG: modelo_entrenado =", session.get('modelo_entrenado'))
+    print("DEBUG: archivo de predicción cargado =", df_pred.shape if df_pred is not None else 'No cargado')
+
+
+    # Pasar los datos a la plantilla
     return render_template('prediccion.html',
-                        datos_prediccion=df_pred.to_dict('records') if df_pred is not None else [],
-                        columnas_prediccion=df_pred.columns.tolist() if df_pred is not None else [],
-                        graficos_prediccion=obtener_graficos_guardados('pred'),
-                        modelo_entrenado='modelo_entrenado' in session)
+        datos_prediccion=df_pred.to_dict('records') if df_pred is not None else [],
+        columnas_prediccion=df_pred.columns.tolist() if df_pred is not None else [],
+        graficos_prediccion=obtener_graficos_guardados('pred'),
+        modelo_entrenado=modelo_entrenado
+    )
 
 @bp.route('/ejecutar_prediccion', methods=['POST'])
 def ejecutar_prediccion():
