@@ -1,63 +1,280 @@
+:root {
+  /* Paleta de colores moderna */
+  --primary: #4361ee;       /* Azul vibrante */
+  --primary-light: #e6f0ff; /* Azul claro de fondo */
+  --secondary: #3f37c9;     /* Azul oscuro */
+  --accent: #4cc9f0;        /* Azul cielo */
+  --success: #4bb543;       /* Verde */
+  --warning: #f8961e;       /* Naranja */
+  --danger: #ef233c;        /* Rojo */
+  --light: #f8f9fa;         /* Fondo claro */
+  --dark: #212529;          /* Texto oscuro */
+  --gray-100: #f1f3f5;      /* Gris claro */
+  --gray-300: #dee2e6;      /* Gris medio */
+  --gray-500: #adb5bd;      /* Gris */
+  --white: #ffffff;         /* Blanco puro */
+}
+
 body {
-    background: #f8f9fa;
-  }
-  
-  h1 {
-    color: #0d6efd;
-  }
-  
+  background-color: var(--light);
+  font-family: 'Inter', sans-serif;
+  color: var(--dark);
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+h1 {
+  position: relative;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+}
+
+h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 2px;
+}
+
+/* ----------------------- Tarjetas Modernas ------------------------------ */
+.card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  background-color: var(--white);
+  margin-bottom: 1.5rem;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(67, 97, 238, 0.15);
+}
+
+.card-header {
+  background-color: var(--white);
+  border-bottom: 1px solid var(--gray-100);
+  padding: 1.25rem 1.5rem;
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+/* ----------------------- Botones Atractivos ------------------------------ */
+.btn {
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn i {
+  font-size: 1.1em;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--secondary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.25);
+}
+
+.btn-success {
+  background-color: var(--success);
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #3a9a3a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(75, 181, 67, 0.25);
+}
+
+.btn-lg {
+  padding: 0.875rem 2rem;
+  font-size: 1.1rem;
+}
+
+/* ----------------------- Tablas Elegantes ------------------------------ */
+.table {
+  color: var(--dark);
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.table thead th {
+  background-color: var(--primary-light);
+  color: var(--secondary);
+  font-weight: 600;
+  border: none;
+  padding: 1rem;
+  position: sticky;
+  top: 0;
+}
+
+.table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background-color: var(--primary-light);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: var(--gray-100);
+}
+
+.table-bordered {
+  border: 1px solid var(--gray-300);
+}
+
+.table-bordered th,
+.table-bordered td {
+  border: 1px solid var(--gray-300);
+  padding: 0.875rem 1rem;
+}
+
+/* ----------------------- Gráficas Modernas ------------------------------ */
+.flip-card {
+  background-color: transparent;
+  width: 100%;
+  height: 320px;
+  perspective: 1000px;
+  border-radius: 12px;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.6s ease;
+  transform-style: preserve-3d;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.flip-card:hover .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front, .flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.flip-card-front {
+  background-color: var(--white);
+  color: var(--dark);
+}
+
+.flip-card-back {
+  background-color: var(--primary-light);
+  color: var(--dark);
+  transform: rotateY(180deg);
+  border: 1px solid var(--gray-300);
+}
+
+/* ----------------------- Formularios Modernos ------------------------------ */
+.form-control {
+  border-radius: 8px;
+  border: 1px solid var(--gray-300);
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.15);
+}
+
+.form-label {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: var(--secondary);
+}
+
+/* ----------------------- Alertas Modernas ------------------------------ */
+.alert {
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  border-left: 4px solid;
+}
+
+.alert-success {
+  background-color: rgba(75, 181, 67, 0.1);
+  border-left-color: var(--success);
+  color: var(--success);
+}
+
+.alert-danger {
+  background-color: rgba(239, 35, 60, 0.1);
+  border-left-color: var(--danger);
+  color: var(--danger);
+}
+
+.alert-info {
+  background-color: rgba(76, 201, 240, 0.1);
+  border-left-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ----------------------- Efectos Especiales ------------------------------ */
+.hover-scale {
+  transition: transform 0.3s ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.shadow-soft {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* ----------------------- Responsividad ------------------------------ */
+@media (max-width: 768px) {
   .card {
-    border-radius: 1rem;
+    margin-bottom: 1rem;
   }
   
-  .accordion-button::after {
-    color: #0d6efd;
+  .table-responsive {
+    border-radius: 8px;
+    overflow: hidden;
   }
   
-  .form-check-label {
-    margin-left: 0.25rem;
-  }
-  
-  /* -----------------------Estilos de las gráficas ------------------------------*/
   .flip-card {
-    background-color: transparent;
-    width: 100%;
-    height: 320px;
-    perspective: 1000px; /* Necesario para el efecto 3D */
+    height: 280px;
   }
-  
-  .flip-card-inner {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    text-align: center;
-    transition: transform 1.5s;
-    transform-style: preserve-3d;
-  }
-  
-  .flip-card:hover .flip-card-inner {
-    transform: rotateY(180deg);
-  }
-  
-  .flip-card-front, .flip-card-back {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    backface-visibility: hidden; /* Oculta el reverso cuando no está girado */
-    border-radius: 0.5rem;
-  }
-  
-  .flip-card-front {
-    background-color: #fff;
-    color: black;
-  }
-  
-  .flip-card-back {
-    background-color: #f8f9fa; /* color suave de fondo */
-    color: #333;
-    transform: rotateY(180deg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-  }  
+}

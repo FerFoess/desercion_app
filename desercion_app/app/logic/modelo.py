@@ -151,10 +151,7 @@ class ModelCacheManager:
             logger.error(f"Error al guardar modelo en caché: {str(e)}")
             raise
 
-def encode_data(df):
-    """Codificación de datos categóricos"""
-    # Implementa tu lógica de codificación aquí
-    return df
+
 
 def train_model(training_data):
     """
@@ -168,17 +165,17 @@ def train_model(training_data):
     """
     try:
         logger.info("Iniciando entrenamiento del modelo")
-        
+
         # 1. Preprocesamiento de datos
-        df_encoded = encode_data(training_data)
+        df_encoded = codificar_datos(training_data, es_prediccion=False)
         X = df_encoded.drop(columns=['abandono', 'nombre'], errors='ignore')
         y = df_encoded['abandono']
         features = list(X.columns)
-        
+
         # 2. Escalado de características
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
-        
+
         # 3. Entrenamiento del modelo
         model = LogisticRegression(
             max_iter=1000,
@@ -186,14 +183,14 @@ def train_model(training_data):
             class_weight='balanced',
             solver='lbfgs'
         )
-        
+
         # 4. Validación cruzada
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
         cv_scores = cross_val_score(model, X_scaled, y, cv=cv, scoring='accuracy')
-        
+
         # 5. Entrenamiento final
         model.fit(X_scaled, y)
-        
+
         # 6. Cálculo de métricas
         y_pred = model.predict(X_scaled)
         metrics = {
@@ -204,9 +201,9 @@ def train_model(training_data):
             'cv_accuracy': [round(score, 3) for score in cv_scores],
             'cv_mean_accuracy': round(cv_scores.mean(), 3)
         }
-        
+
         logger.info(f"Métricas del modelo: {metrics}")
-        
+
         return {
             'model': model,
             'scaler': scaler,
@@ -214,10 +211,12 @@ def train_model(training_data):
             'metrics': metrics,
             'training_date': datetime.now().isoformat()
         }
-        
+
     except Exception as e:
         logger.error(f"Error en entrenamiento del modelo: {str(e)}")
         raise
+
+
 
 def predict(model_data, input_data):
     """
@@ -232,47 +231,48 @@ def predict(model_data, input_data):
     """
     try:
         logger.info("Iniciando predicción")
-        
+
         # 1. Validar componentes del modelo
         required_components = ['model', 'scaler', 'features']
         for comp in required_components:
             if comp not in model_data:
                 raise ValueError(f"Falta componente requerido: {comp}")
-        
-        # 2. Preprocesamiento de datos
-        df_encoded = encode_data(input_data)
+
+        # 2. Preprocesamiento de datos para predicción
+        df_encoded = codificar_datos(input_data, es_prediccion=True)
         X = df_encoded.drop(columns=['nombre'], errors='ignore')
-        
+
         # 3. Validar características
         if list(X.columns) != model_data['features']:
             raise ValueError(
                 "Las características no coinciden con las de entrenamiento. "
                 f"Esperadas: {model_data['features']}, Obtenidas: {list(X.columns)}"
             )
-        
+
         # 4. Escalado y predicción
         X_scaled = model_data['scaler'].transform(X)
         predictions = model_data['model'].predict(X_scaled)
         probabilities = model_data['model'].predict_proba(X_scaled)[:, 1]
-        
+
         # 5. Preparar resultados
         results = df_encoded.copy()
         results['prediccion'] = predictions
         results['probabilidad'] = probabilities
-        
+
         return {
             'success': True,
             'predictions': results.to_dict('records'),
             'metrics': model_data['metrics'],
             'prediction_date': datetime.now().isoformat()
         }
-        
+
     except Exception as e:
         logger.error(f"Error en predicción: {str(e)}")
         return {
             'success': False,
             'error': str(e)
         }
+
 
 # Ejemplo de uso seguro
 if __name__ == "__main__":
@@ -317,3 +317,4 @@ if __name__ == "__main__":
         print(f"\n[ERROR] Error en las pruebas: {str(e)}")
     
     print("\n=== PRUEBAS COMPLETADAS ===")
+

@@ -1,2 +1,5 @@
+from datetime import timedelta
+
 class Config:
-    SECRET_KEY = 'mi_clave_secreta'
+    SECRET_KEY = 'clave_segura_123'
+    PERMANENT_SESSION_LIFETIME = timedelta(days=1)
