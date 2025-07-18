@@ -60,6 +60,7 @@ class ModelCacheManager:
             logger.error(f"Error buscando modelo: {str(e)}")
             return None
 
+
     def has_model(self):
         """Verifica si hay modelos disponibles"""
         return self._find_latest_model() is not None
@@ -112,11 +113,29 @@ class ModelCacheManager:
             raise
 
     def save_model(self, trained_model):
-        """Guarda el modelo asegurando la estructura correcta"""
+        """Guarda el modelo con variables y coeficientes"""
         required_keys = ['model', 'scaler', 'features', 'metrics', 'training_date']
         missing_keys = [k for k in required_keys if k not in trained_model]
         if missing_keys:
             raise ValueError(f"Faltan claves en el modelo: {missing_keys}")
+
+        # Extraer coeficientes del modelo de regresión logística
+        model = trained_model['model']
+        features = trained_model['features']
+        
+        if hasattr(model, 'coef_'):
+            # Para modelos con un solo conjunto de coeficientes
+            if model.coef_.ndim == 1:
+                coefficients = list(zip(features, model.coef_))
+            # Para modelos multiclase (aunque en tu caso es binario)
+            else:
+                coefficients = list(zip(features, model.coef_[0]))
+            
+            trained_model['coefficients'] = coefficients
+            logger.info(f"Coeficientes guardados: {len(coefficients)} variables")
+        else:
+            logger.warning("El modelo no tiene coeficientes (coef_)")
+            trained_model['coefficients'] = []
 
         try:
             model_path = os.path.join(self.cache_dir, f"modelo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl")
@@ -201,7 +220,35 @@ def train_model(training_data, cache_manager=None):
         logger.error(f"Error en entrenamiento: {str(e)}")
         raise
 
-
+def save_prediction_results(self, predictions, model_path):
+    """Guarda los resultados incluyendo los coeficientes del modelo"""
+    try:
+        # Cargar el modelo para obtener los coeficientes
+        with open(model_path, 'rb') as f:
+            model_data = pickle.load(f)
+        
+        # Verificar que tenemos coeficientes
+        if 'coefficients' not in model_data:
+            logger.warning("No se encontraron coeficientes en el modelo")
+            model_data['coefficients'] = []
+        
+        resultados = {
+            'predictions': predictions,
+            'model_name': os.path.basename(model_path),
+            'prediction_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'coefficients': model_data['coefficients'],  # Usamos los coeficientes guardados
+            'features': model_data.get('features', [])
+        }
+        
+        result_path = os.path.join(self.cache_dir, f"resultados_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl")
+        with open(result_path, 'wb') as f:
+            pickle.dump(resultados, f)
+        
+        logger.info(f"Resultados guardados con {len(resultados['coefficients'])} coeficientes")
+        return result_path
+    except Exception as e:
+        logger.error(f"Error al guardar resultados: {str(e)}")
+        raise
 
 def predict(model_data, input_data):
     """
@@ -303,6 +350,24 @@ def codificar_datos(df, es_prediccion=False):
     print(f"- Columnas categóricas convertidas: {list(cat_cols)}")
     
     return df
+
+def obtener_ultimo_modelo(cache_dir):
+    """Obtiene el path del modelo más reciente por fecha"""
+    try:
+        # Listar todos los archivos de modelo
+        modelos = glob.glob(os.path.join(cache_dir, 'modelo_*.pkl'))
+        
+        if not modelos:
+            return None
+            
+        # Ordenar por fecha (el nombre contiene timestamp)
+        modelos.sort(key=os.path.getmtime, reverse=True)
+        
+        return modelos[0]  # El más reciente
+        
+    except Exception as e:
+        logger.error(f"Error buscando último modelo: {str(e)}")
+        return None
 
 if __name__ == "__main__":
     """Ejemplo de uso"""

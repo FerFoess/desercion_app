@@ -18,6 +18,7 @@ from flask import (
 )
 from werkzeug.utils import secure_filename
 from .logic.modelo import ModelCacheManager, train_model, predict
+from datetime import datetime 
 
 # Configuración
 ALLOWED_EXTENSIONS = {'csv', 'xlsx'}
@@ -642,75 +643,80 @@ def ejecutar_prediccion():
         flash(f'Error al predecir: {str(e)}', 'error')
         return redirect(url_for('main.predecir'))
     
+
 @bp.route('/resultados')
 def mostrar_resultados():
     try:
-        # 1. Verificar si existe caché de resultados en sesión
+        # 1. Verificar caché en sesión
         if 'cache_resultados' not in session:
-            current_app.logger.warning("Intento de acceder a resultados sin caché en sesión")
-            flash('No hay resultados de predicción disponibles. Por favor, ejecuta una predicción primero.', 'error')
+            flash('No hay resultados disponibles. Ejecuta una predicción primero.', 'error')
             return redirect(url_for('main.predecir'))
-        
-        # 2. Obtener ruta del archivo de caché
+
+        # 2. Cargar resultados de predicción
         cache_file = session['cache_resultados']
-        current_app.logger.debug(f"Intentando cargar archivo de caché: {cache_file}")
-        
-        # 3. Verificar que el archivo de caché existe físicamente
         if not os.path.exists(cache_file):
-            current_app.logger.error(f"Archivo de caché no encontrado: {cache_file}")
-            session.pop('cache_resultados', None)  # Limpiar referencia inválida
-            flash('Los resultados han expirado o fueron eliminados. Por favor, ejecuta una nueva predicción.', 'error')
+            session.pop('cache_resultados', None)
+            flash('Los resultados han expirado. Por favor, genera una nueva predicción.', 'error')
             return redirect(url_for('main.predecir'))
+
+        with open(cache_file, 'rb') as f:
+            resultados = pickle.load(f)
+
+        # 3. Obtener ruta CORRECTA (al mismo nivel que app/)
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # Sube a desercion_app/
+        cache_dir = os.path.join(base_dir, 'data_cache')  # Ahora apunta directamente a data_cache/
         
-        # 4. Cargar resultados desde el archivo
+        current_app.logger.debug(f"Buscando modelos en: {cache_dir}")
+
+        # 4. Buscar modelos disponibles
         try:
-            with open(cache_file, 'rb') as f:
-                resultados = pickle.load(f)
-            current_app.logger.debug("Resultados cargados correctamente desde caché")
-        except (pickle.PickleError, EOFError) as e:
-            current_app.logger.error(f"Error al deserializar archivo de caché: {str(e)}")
-            flash('Error al leer los resultados guardados. El archivo puede estar corrupto.', 'error')
-            return redirect(url_for('main.predecir'))
+            listado_modelos = sorted(
+                [f for f in os.listdir(cache_dir) if f.startswith('modelo_') and f.endswith('.pkl')],
+                key=lambda x: os.path.getmtime(os.path.join(cache_dir, x)),
+                reverse=True
+            )
+        except FileNotFoundError:
+            flash('No se encontró el directorio de modelos. Contacta al administrador.', 'error')
+            return redirect(url_for('main.index'))
+
+        if not listado_modelos:
+            flash('No hay modelos disponibles. Entrena un modelo primero.', 'error')
+            return redirect(url_for('main.index'))
+
+        modelo_path = os.path.join(cache_dir, listado_modelos[0])
+        current_app.logger.info(f'Usando modelo: {listado_modelos[0]}')
+
+        # 5. Cargar modelo y extraer coeficientes
+        with open(modelo_path, 'rb') as f:
+            modelo_data = pickle.load(f)
+
+        modelo = modelo_data['model']
+        features = modelo_data['features']
         
-        # 5. Validar estructura de los resultados
-        if not isinstance(resultados, dict):
-            current_app.logger.error(f"Resultados no son un diccionario. Tipo: {type(resultados)}")
-            flash('Formato de resultados inválido', 'error')
-            return redirect(url_for('main.predecir'))
-        
-        if 'predictions' not in resultados:
-            current_app.logger.error("Diccionario de resultados no contiene clave 'predictions'")
-            flash('Los resultados no contienen datos de predicción', 'error')
-            return redirect(url_for('main.predecir'))
-        
-        # 6. Convertir a DataFrame con manejo de errores
-        try:
-            df_resultados = pd.DataFrame(resultados['predictions'])
-            current_app.logger.debug(f"DataFrame creado con {len(df_resultados)} registros")
-        except Exception as e:
-            current_app.logger.error(f"Error al crear DataFrame: {str(e)}")
-            flash('Error al procesar los datos de predicción', 'error')
-            return redirect(url_for('main.predecir'))
-        
-        # 7. Preparar datos para la plantilla con valores por defecto seguros
-        template_data = {
+        if hasattr(modelo, 'coef_'):
+            coeficientes = list(zip(features, modelo.coef_[0])) if modelo.coef_.ndim > 1 else list(zip(features, modelo.coef_))
+            coeficientes = sorted(coeficientes, key=lambda x: abs(x[1]), reverse=True)
+        else:
+            coeficientes = []
+            current_app.logger.warning('Modelo no tiene coeficientes')
+
+        # 6. Preparar datos para la plantilla
+        context = {
             'predicciones': resultados.get('predictions', []),
-            'fecha_prediccion': resultados.get('prediction_date', 'No disponible'),
+            'coeficientes': coeficientes,
+            'fecha_prediccion': resultados.get('prediction_date', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+            'nombre_modelo': listado_modelos[0],
             'metricas': resultados.get('metrics', {}),
-            'nombre_modelo': resultados.get('model_name', 'Modelo no especificado')
+            'graficos': resultados.get('graficos', {})
         }
-        
-        # 8. Verificar si hay gráficos disponibles
-        if 'graficos' in resultados:
-            template_data['graficos_resultados'] = resultados['graficos']
-        
-        current_app.logger.info("Mostrando resultados de predicción")
-        return render_template('resultados_predicciones.html', **template_data)
-    
+
+        return render_template('resultados_predicciones.html', **context)
+
     except Exception as e:
-        current_app.logger.error(f"Error inesperado en mostrar_resultados: {str(e)}", exc_info=True)
-        flash('Ocurrió un error inesperado al mostrar los resultados. Por favor, inténtalo nuevamente.', 'error')
+        current_app.logger.error(f'Error en mostrar_resultados: {str(e)}', exc_info=True)
+        flash('Ocurrió un error al mostrar los resultados. Por favor, inténtalo nuevamente.', 'error')
         return redirect(url_for('main.index'))
+
 
 @bp.route('/graficos-prediccion')
 def mostrar_graficos_prediccion():

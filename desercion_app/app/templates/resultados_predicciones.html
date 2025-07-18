@@ -15,76 +15,48 @@
     </div>
   </div>
 
-  <!-- Sección de coeficientes e interpretación -->
-  <div class="row justify-content-center mb-4">
-    <!-- Coeficientes del Modelo -->
-    <div class="col-md-5 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header bg-primary text-white text-center">
-          <h5 class="mb-0">
-            <i class="fas fa-percentage me-2"></i>Coeficientes del Modelo
-          </h5>
-        </div>
-        <div class="card-body p-0">
-          <!-- Tabla de Coeficientes -->
-          <div class="table-responsive">
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Variable</th>
-                  <th>Coeficiente</th>
-                  <th>Interpretación</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for variable, valor in coeficientes %}
-                <tr>
-                  <td>{{ variable }}</td>
-                  <td>{{ "%.4f"|format(valor) }}</td>
-                  <td>{{ interpretacion.get(variable, "No disponible") }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+<!-- Sección de coeficientes -->
+<div class="card shadow-sm">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-percentage me-2"></i>Variables y Coeficientes
+        </h5>
     </div>
-
-    <!-- Interpretación Humana -->
-    <div class="col-md-5 mb-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header bg-primary text-white text-center">
-          <h5 class="mb-0">
-            <i class="fas fa-comment-dots me-2"></i>Interpretación Humana
-          </h5>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive" style="max-height: 400px;">
-            <table class="table table-hover table-sm mb-0">
-              <thead class="table-light sticky-top">
-                <tr>
-                  <th class="text-center">Variable</th>
-                  <th class="text-center">Significado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for variable, _ in coeficientes %}
-                <tr>
-                  <td class="text-center">{{ variable }}</td>
-                  <td>
-                    <small>{{ interpretacion.get(variable, "Interpretación no disponible") }}</small>
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Variable</th>
+                        <th>Coeficiente</th>
+                        <th>Impacto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for variable, valor in coeficientes %}
+                    <tr>
+                        <td>{{ variable }}</td>
+                        <td>{{ "%.4f"|format(valor) }}</td>
+                        <td>
+                            {% if valor > 0.5 %}
+                                <span class="badge bg-danger">Aumenta riesgo</span>
+                            {% elif valor > 0.1 %}
+                                <span class="badge bg-warning text-dark">Aumento moderado</span>
+                            {% elif valor < -0.5 %}
+                                <span class="badge bg-success">Reduce riesgo</span>
+                            {% elif valor < -0.1 %}
+                                <span class="badge bg-info">Reducción moderada</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Impacto mínimo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
             </table>
-          </div>
         </div>
-      </div>
     </div>
-  </div>
-
+</div>
   <!-- Sección de predicciones -->
   <div class="row justify-content-center">
     <div class="col-md-10">
