@@ -13,7 +13,7 @@ matplotlib.use('Agg')  # Configuración importante para servidor
 import matplotlib.pyplot as plt
 import seaborn as sns
 from flask import (
-    Blueprint, render_template, request, redirect, 
+    Blueprint, jsonify, render_template, request, redirect, 
     url_for, flash, send_file, session, current_app
 )
 from werkzeug.utils import secure_filename
