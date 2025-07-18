@@ -17,148 +17,426 @@
   {% endif %}
   {% endwith %}
 
-  <!-- Formulario de carga -->
-  <form action="{{ url_for('main.index') }}" method="post" enctype="multipart/form-data" class="card shadow p-4">
-    <div class="mb-3">
-      <label class="form-label"><strong>📁 Sube el archivo CSV:</strong></label>
-      <input type="file" name="archivo_entrenamiento" class="form-control" accept=".csv" required>
-    </div>
+  <!-- Contenedor Principal de Formulario y Botones -->
+  <div class="card shadow p-4 mb-4">
+    <form action="{{ url_for('main.index') }}" method="post" enctype="multipart/form-data">
+      <div class="row g-3">
+        <!-- Campo de archivo -->
+        <div class="col-md-8">
+          <label class="form-label"><strong>📁 Sube el archivo CSV:</strong></label>
+          <input type="file" name="archivo_entrenamiento" class="form-control" accept=".csv" required>
+        </div>
 
-    <div class="text-center">
-      <button type="submit" class="btn btn-primary">Cargar archivo</button>
-      <button type="submit" formaction="{{ url_for('main.limpiar_datos') }}" class="btn btn-danger ms-2">Limpiar
-        Todo</button>
-    </div>
-  </form>
+        <!-- Botones de acción -->
+        <div class="col-md-4 d-flex align-items-end">
+          <div class="d-flex flex-wrap gap-2 w-100">
+            <button type="submit" class="btn btn-primary flex-grow-1">
+              <i class="fas fa-upload me-1"></i> Cargar
+            </button>
+            <button type="submit" formaction="{{ url_for('main.limpiar_datos') }}" class="btn btn-danger flex-grow-1">
+              <i class="fas fa-trash-alt me-1"></i> Limpiar
+            </button>
+            <button type="button" class="btn btn-info flex-grow-1" data-bs-toggle="modal"
+              data-bs-target="#historialModal">
+              <i class="fas fa-history me-1"></i> Historial
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
 
-  <!-- Tabla de Datos -->
-  {% if datos_paginados and columnas %}
-  <div class="card shadow mt-5">
-    <div class="card-header bg-info text-white fw-bold">
-      🧾 Datos del archivo (página {{ pagina_actual }} de {{ total_paginas }})
-    </div>
-    <div class="card-body table-responsive">
-      <table class="table table-striped table-bordered table-hover">
-        <thead class="table-dark">
-          <tr>
-            {% for col in columnas %}
-            <th>
-              {{ col | capitalize }}
-              <small class="text-muted d-block">{{ df[col].dtype if df else '' }}</small>
-            </th>
-            {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for fila in datos_paginados %}
-          <tr>
-            {% for col in columnas %}
-            <td>{{ fila.get(col, 'N/A') }}</td>
-            {% endfor %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Paginación elegante -->
-    {% if total_paginas > 1 %}
-    <div class="d-flex justify-content-center mt-4">
-      <div class="text-center">
-        <small class="text-muted d-block mb-2">
-          Página <strong>{{ pagina_actual }}</strong> de <strong>{{ total_paginas }}</strong>
-        </small>
-        <nav aria-label="Page navigation">
-          <ul class="pagination justify-content-center pagination-md mb-0">
-            <!-- Botón Anterior -->
-            <li class="page-item {% if pagina_actual == 1 %}disabled{% endif %}">
-              <a class="page-link" href="{{ url_for('main.index', pagina=pagina_actual - 1) }}" aria-label="Anterior">
-                &laquo;
-              </a>
-            </li>
-
-            {% set start = pagina_actual - 2 if pagina_actual - 2 > 1 else 1 %}
-            {% set end = start + 4 if start + 4 <= total_paginas else total_paginas %} {% if end - start < 4 and start>
-              1 %}
-              {% set start = max(1, end - 4) %}
-              {% endif %}
-
-              {% for p in range(start, end + 1) %}
-              <li class="page-item {% if p == pagina_actual %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.index', pagina=p) }}">{{ p }}</a>
-              </li>
-              {% endfor %}
-
-              <!-- Botón Siguiente -->
-              <li class="page-item {% if pagina_actual == total_paginas %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('main.index', pagina=pagina_actual + 1) }}"
-                  aria-label="Siguiente">
-                  &raquo;
-                </a>
-              </li>
-          </ul>
-        </nav>
+  <div class="modal fade" id="historialModal" tabindex="-1" aria-labelledby="historialModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="historialModalLabel">
+            <i class="fas fa-history me-2"></i> Historial de Modelos
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="loadingHistorial" class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando modelos disponibles...</p>
+          </div>
+          <div id="contenidoHistorial" style="display: none;">
+            <div class="table-responsive">
+              <table class="table table-hover" id="tablaHistorial">
+                <thead class="table-light">
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Fecha</th>
+                    <th>Tamaño</th>
+                    <th class="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Se llena dinámicamente -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div id="sinModelos" class="text-center py-4" style="display: none;">
+            <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+            <h5>No se encontraron modelos de entrenamiento</h5>
+            <p class="text-muted">Sube un archivo CSV para generar tu primer modelo</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <small class="text-muted me-auto" id="contadorModelos">0 modelos encontrados</small>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="fas fa-times me-1"></i> Cerrar
+          </button>
+        </div>
       </div>
     </div>
-    {% endif %}
-    {% endif %}
+  </div>
+</div>
 
-    <!-- Gráficos -->
-    {% if graficos_brutos %}
-    <div class="mt-5">
-      <h3 class="text-center mb-4">📊 Análisis Exploratorio</h3>
-      <div class="row row-cols-1 row-cols-md-2 g-4">
-        {% for grafico in graficos_brutos %}
-        <div class="col">
-          <div class="flip-card shadow-sm">
-            <div class="flip-card-inner">
-              <!-- Frente: imagen del gráfico -->
-              <div class="flip-card-front border">
-                <div class="card-header bg-gradient bg-info text-white fw-semibold">
-                  <h5 class="card-title text-center mb-0">{{ grafico.titulo }}</h5>
-                </div>
-                <div class="card-body d-flex justify-content-center align-items-center">
-                  <img src="{{ url_for('static', filename=grafico.nombre_archivo) }}" class="img-fluid p-2"
-                    alt="{{ grafico.titulo }}" style="max-height: 250px; width: auto;">
-                </div>
+<!-- Tabla de Datos -->
+{% if datos_paginados and columnas %}
+<div class="card shadow mt-5">
+  <div class="card-header bg-info text-white fw-bold">
+    🧾 Datos del archivo (página {{ pagina_actual }} de {{ total_paginas }})
+  </div>
+  <div class="card-body table-responsive">
+    <table class="table table-striped table-bordered table-hover">
+      <thead class="table-dark">
+        <tr>
+          {% for col in columnas %}
+          <th>
+            {{ col | capitalize }}
+            <small class="text-muted d-block">{{ df[col].dtype if df else '' }}</small>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in datos_paginados %}
+        <tr>
+          {% for col in columnas %}
+          <td>{{ fila.get(col, 'N/A') }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Paginación elegante -->
+  {% if total_paginas > 1 %}
+  <div class="d-flex justify-content-center mt-4">
+    <div class="text-center">
+      <small class="text-muted d-block mb-2">
+        Página <strong>{{ pagina_actual }}</strong> de <strong>{{ total_paginas }}</strong>
+      </small>
+      <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center pagination-md mb-0">
+          <!-- Botón Anterior -->
+          <li class="page-item {% if pagina_actual == 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('main.index', pagina=pagina_actual - 1) }}" aria-label="Anterior">
+              &laquo;
+            </a>
+          </li>
+
+          {% set start = pagina_actual - 2 if pagina_actual - 2 > 1 else 1 %}
+          {% set end = start + 4 if start + 4 <= total_paginas else total_paginas %} {% if end - start < 4 and start>
+            1 %}
+            {% set start = max(1, end - 4) %}
+            {% endif %}
+
+            {% for p in range(start, end + 1) %}
+            <li class="page-item {% if p == pagina_actual %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('main.index', pagina=p) }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+
+            <!-- Botón Siguiente -->
+            <li class="page-item {% if pagina_actual == total_paginas %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('main.index', pagina=pagina_actual + 1) }}" aria-label="Siguiente">
+                &raquo;
+              </a>
+            </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <!-- Gráficos -->
+  {% if graficos_brutos %}
+  <div class="mt-5">
+    <h3 class="text-center mb-4">📊 Análisis Exploratorio</h3>
+    <div class="row row-cols-1 row-cols-md-2 g-4">
+      {% for grafico in graficos_brutos %}
+      <div class="col">
+        <div class="flip-card shadow-sm">
+          <div class="flip-card-inner">
+            <!-- Frente: imagen del gráfico -->
+            <div class="flip-card-front border">
+              <div class="card-header bg-gradient bg-info text-white fw-semibold">
+                <h5 class="card-title text-center mb-0">{{ grafico.titulo }}</h5>
               </div>
-              <!-- Atrás: interpretación o descripción -->
-              <div class="flip-card-back border p-3 d-flex align-items-center justify-content-center">
-                <p class="mb-0 text-center">{{ grafico.descripcion }}</p>
+              <div class="card-body d-flex justify-content-center align-items-center">
+                <img src="{{ url_for('static', filename=grafico.nombre_archivo) }}" class="img-fluid p-2"
+                  alt="{{ grafico.titulo }}" style="max-height: 250px; width: auto;">
               </div>
+            </div>
+            <!-- Atrás: interpretación o descripción -->
+            <div class="flip-card-back border p-3 d-flex align-items-center justify-content-center">
+              <p class="mb-0 text-center">{{ grafico.descripcion }}</p>
             </div>
           </div>
         </div>
-        {% endfor %}
       </div>
+      {% endfor %}
     </div>
-    {% endif %}
+  </div>
+  {% endif %}
 
-    <!-- Después de la sección de gráficos -->
-    {% if datos_paginados %}
-    <div class="text-center mt-4">
-      <form action="{{ url_for('main.entrenar') }}" method="post">
-        <button type="submit" class="btn btn-primary btn-lg">
-          🏋️ Entrenar Modelo con estos Datos
-        </button>
-      </form>
+  <!-- Después de la sección de gráficos -->
+  {% if datos_paginados %}
+  <div class="text-center mt-4">
+    <form action="{{ url_for('main.entrenar') }}" method="post">
+      <button type="submit" class="btn btn-primary btn-lg">
+        🏋️ Entrenar Modelo con estos Datos
+      </button>
+    </form>
 
-      <a href="{{ url_for('main.predecir') }}" class="btn btn-success btn-lg mt-3">
-        🔮 Ir a Predicción
-      </a>
-    </div>
-    {% endif %}
+    <a href="{{ url_for('main.predecir') }}" class="btn btn-success btn-lg mt-3">
+      🔮 Ir a Predicción
+    </a>
+  </div>
+  {% endif %}
+</div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-      // Validación cliente del archivo CSV
-      document.querySelector('form').addEventListener('submit', function (e) {
-        const fileInput = document.querySelector('input[name="archivo_entrenamiento"]');
-        if (fileInput.files.length > 0 && !fileInput.files[0].name.endsWith('.csv')) {
-          e.preventDefault();
-          alert('¡Solo se permiten archivos CSV!');
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+  // Validación cliente del archivo CSV
+  document.querySelector('form').addEventListener('submit', function (e) {
+    const fileInput = document.querySelector('input[name="archivo_entrenamiento"]');
+    if (fileInput.files.length > 0 && !fileInput.files[0].name.endsWith('.csv')) {
+      e.preventDefault();
+      alert('¡Solo se permiten archivos CSV!');
+    }
+  });
+
+  // --------- Función del botón de ver históricos -----------------
+  $(document).ready(function () {
+    // Estado del modal
+    let modalInicializado = false;
+
+    // Controlador del modal
+    $('#historialModal').on('show.bs.modal', function (e) {
+      if (!modalInicializado) {
+        cargarHistorial();
+        modalInicializado = true;
+      }
+    }).on('hidden.bs.modal', function () {
+      // Resetear el estado al cerrar
+      $('#contenidoHistorial').hide();
+      $('#sinModelos').hide();
+      $('#loadingHistorial').show();
+    });
+
+    // Función para cargar el historial
+    function cargarHistorial() {
+      const $tbody = $('#tablaHistorial tbody');
+      $('#loadingHistorial').show();
+      $('#contenidoHistorial').hide();
+      $('#sinModelos').hide();
+
+      console.log("Iniciando carga de historial...");
+
+      $.ajax({
+        url: "{{ url_for('main.obtener_historial') }}",
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          console.log("Respuesta del servidor:", data);
+
+          if (data.success && data.historial && data.historial.length > 0) {
+            console.log("Modelos encontrados:", data.historial.length);
+            renderizarHistorial(data.historial);
+            $('#contenidoHistorial').show();
+            $('#contadorModelos').text(data.historial.length + ' modelos encontrados');
+          } else {
+            console.log("No se encontraron modelos");
+            $('#sinModelos').show();
+            $('#contadorModelos').text('0 modelos encontrados');
+          }
+        },
+        error: function (xhr, status, error) {
+          console.error("Error en la petición:", status, error);
+          $('#sinModelos').html(
+            '<div class="alert alert-danger">Error al cargar el historial. Ver consola para detalles.</div>'
+          ).show();
+        },
+        complete: function () {
+          $('#loadingHistorial').hide();
         }
       });
-    </script>
-    {% endblock %}
+      console.log("Iniciando carga de historial...");
+
+      $.ajax({
+        url: "{{ url_for('main.obtener_historial') }}",
+        type: 'GET',
+        dataType: 'json',
+        success: function (data) {
+          console.log("Respuesta del servidor:", data);
+
+          if (data.success && data.historial && data.historial.length > 0) {
+            console.log("Entró a renderizarHistorial");
+            renderizarHistorial(data.historial);
+            console.log("Terminó de renderizar");
+            $('#contenidoHistorial').show();
+            console.log("Mostró #contenidoHistorial");
+            $('#contadorModelos').text(data.historial.length + ' modelos encontrados');
+          } else {
+            console.log("No modelos encontrados");
+            $('#sinModelos').show();
+            $('#contadorModelos').text('0 modelos encontrados');
+          }
+        },
+        error: function (xhr, status, error) {
+          console.error("Error en la petición:", status, error);
+          $('#sinModelos').html(
+            '<div class="alert alert-danger">Error al cargar el historial. Ver consola para detalles.</div>'
+          ).show();
+        },
+        complete: function () {
+          $('#loadingHistorial').hide();
+          console.log("Ocultó loadingHistorial");
+        }
+      });
+    }
+
+    // Función para renderizar el historial
+    function renderizarHistorial(historial) {
+      console.log("renderizarHistorial recibió:", historial);
+      const $tbody = $('#tablaHistorial tbody');
+      $tbody.empty();
+
+      historial.forEach(function (modelo) {
+        console.log("Agregando modelo:", modelo.nombre);
+        const tamanoKB = Math.round(modelo.tamano / 1024);
+        const esActual = '{{ session.get("cache_file_entrenamiento", "").split("/").pop() }}' === modelo.nombre;
+
+        const $fila = $('<tr>');
+        if (esActual) $fila.addClass('table-primary');
+
+        $fila.append($('<td>').addClass('font-monospace').text(modelo.nombre));
+        $fila.append($('<td>').text(modelo.fecha));
+        $fila.append($('<td>').text(tamanoKB + ' KB'));
+
+        const $acciones = $('<td>').addClass('text-nowrap text-end');
+
+        if (!esActual) {
+          $acciones.append(
+            $('<button>')
+              .addClass('btn btn-select-model me-2')
+              .html('<i class="fas fa-check me-1"></i> Seleccionar')
+              .on('click', function () {
+                seleccionarModelo(modelo.nombre);
+              })
+          );
+        } else {
+          $acciones.append(
+            $('<span>')
+              .addClass('badge badge-in-use')
+              .html('<i class="fas fa-check-circle me-1"></i> En uso')
+          );
+        }
+
+        $acciones.append(
+          $('<button>')
+            .addClass('btn btn-delete-model')
+            .html('<i class="fas fa-trash-alt"></i>')
+            .on('click', function () {
+              eliminarModelo(modelo.nombre);
+            })
+        );
+
+        $fila.append($acciones);
+        $tbody.append($fila);
+
+
+      });
+    }
+
+    // Función para seleccionar modelo
+    function seleccionarModelo(nombreModelo) {
+      $.ajax({
+        url: "{{ url_for('main.cargar_modelo') }}",
+        type: 'POST',
+        data: { nombre_modelo: nombreModelo },
+        dataType: 'json',
+        beforeSend: function () {
+          mostrarNotificacion('Cargando modelo...', 'info');
+        },
+        success: function (data) {
+          if (data.success) {
+            mostrarNotificacion('Modelo seleccionado: ' + data.nombre_modelo, 'success');
+            setTimeout(() => {
+              $('#historialModal').modal('hide');
+              location.reload();
+            }, 1000);
+          } else {
+            mostrarNotificacion(data.message || 'Error al cargar modelo', 'danger');
+          }
+        },
+        error: function () {
+          mostrarNotificacion('Error de conexión', 'danger');
+        }
+      });
+    }
+
+    // Función para eliminar modelo
+    function eliminarModelo(nombreModelo) {
+      if (confirm(`¿Está seguro de eliminar el modelo "${nombreModelo}"?`)) {
+        $.ajax({
+          url: "{{ url_for('main.eliminar_modelo') }}",
+          type: 'POST',
+          data: { nombre_modelo: nombreModelo },
+          dataType: 'json',
+          beforeSend: function () {
+            mostrarNotificacion('Eliminando modelo...', 'info');
+          },
+          success: function (data) {
+            if (data.success) {
+              mostrarNotificacion('Modelo eliminado correctamente', 'success');
+              cargarHistorial();
+            } else {
+              mostrarNotificacion(data.message || 'Error al eliminar modelo', 'danger');
+            }
+          },
+          error: function () {
+            mostrarNotificacion('Error de conexión', 'danger');
+          }
+        });
+      }
+    }
+
+    // Función para mostrar notificaciones
+    function mostrarNotificacion(mensaje, tipo) {
+      const $notificacion = $(
+        `<div class="alert alert-${tipo} alert-dismissible fade show position-fixed" 
+            style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+         ${mensaje}
+       </div>`
+      );
+
+      $('body').append($notificacion);
+      setTimeout(() => $notificacion.alert('close'), 3000);
+    }
+  });
+</script>
+{% endblock %}
