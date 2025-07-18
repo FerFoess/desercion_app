@@ -474,6 +474,7 @@ def limpiar_datos():
     flash('Datos, gráficos y modelo reseteados correctamente', 'success')
     return redirect(url_for('main.index'))
 
+
 @bp.route('/entrenar', methods=['POST'])
 def entrenar():
     if 'cache_file_entrenamiento' not in session:
@@ -527,12 +528,15 @@ def mostrar_metricas():
 
 @bp.route('/predecir', methods=['GET', 'POST'])
 def predecir():
+    pagina = request.args.get('pagina', 1, type=int)
+    por_pagina = ITEMS_PER_PAGE  # Usa el mismo valor que tienes para index (ejemplo: 10 o 20)
+
     if request.method == 'POST':
-        # Verificar si el arachhivo fue enviado
         if 'archivo_prediccion' not in request.files:
             flash('No se seleccionó archivo', 'error')
+            print("[DEBUG] archivo_prediccion NO está en request.files")
             return redirect(url_for('main.predecir'))
-            
+
         archivo = request.files['archivo_prediccion']
         
         # Verificar si se seleccionó un archivo
@@ -563,18 +567,32 @@ def predecir():
                 return redirect(url_for('main.predecir'))
     
     df_pred = cargar_datos_cache('prediccion')
-    
-    # Verificar si hay modelo entrenado (usa get para evitar KeyError)
     modelo_entrenado = model_cache.has_model()
+
+    datos_paginados = []
+    columnas = []
+    total_paginas = 1
+
+    if df_pred is not None and not df_pred.empty:
+        columnas = df_pred.columns.tolist()
+        total_paginas = max(1, math.ceil(len(df_pred) / por_pagina))
+        pagina = max(1, min(pagina, total_paginas))
+        inicio = (pagina - 1) * por_pagina
+        datos_paginados = df_pred.iloc[inicio:inicio+por_pagina].to_dict('records')
+
+        print(f"[DEBUG] Mostrando página {pagina} de {total_paginas}, filas {inicio}-{inicio+por_pagina}")
+    else:
+        print("[DEBUG] No hay datos cargados aún para predicción.")
+
+    # Recuperar gráficos desde sesión o disco
+    if 'graficos_pred' in session:
+        graficos = json.loads(session['graficos_pred'])
+    else:
+        graficos = obtener_graficos_guardados('pred')
+        
     
-    # Debug: Imprime el estado para diagnóstico
-    print(f"[DEBUG] ¿Modelo en caché? {modelo_entrenado}")
-    print(f"DEBUG - Modelo entrenado: {modelo_entrenado}, Datos cargados: {df_pred is not None}")
 
-    print("DEBUG: archivo de predicción cargado =", df_pred.shape if df_pred is not None else 'No cargado')
-
-
-    # Pasar los datos a la plantilla
+    # --- Renderizar plantilla ---
     return render_template('prediccion.html',
         datos_prediccion=df_pred.to_dict('records') if df_pred is not None else [],
         columnas_prediccion=df_pred.columns.tolist() if df_pred is not None else [],
