@@ -201,6 +201,8 @@ def train_model(training_data, cache_manager=None):
         logger.error(f"Error en entrenamiento: {str(e)}")
         raise
 
+
+
 def predict(model_data, input_data):
     """
     Realiza predicciones con el modelo
