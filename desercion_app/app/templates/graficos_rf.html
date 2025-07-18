@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Gráficos Random Forest{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Gráficos del Modelo Random Forest</h2>
+
+<div class="row">
+  <div class="col-md-6">
+    <canvas id="grafico1" class="mb-5"></canvas>
+  </div>
+  <div class="col-md-6">
+    <canvas id="grafico2" class="mb-5"></canvas>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-6">
+    <h4>Motivación vs Predicción</h4>
+    <canvas id="grafico_motivacion" style="max-height: 400px;"></canvas>
+  </div>
+  <div class="col-md-6">
+    <h4>Estrés vs Predicción</h4>
+    <canvas id="grafico_estres" style="max-height: 400px;"></canvas>
+  </div>
+</div>
+
+<a href="{{ url_for('main.index') }}" class="btn btn-secondary mt-4">Regresar</a>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const datos = {{ datos | tojson }};
+    
+    // Datos base
+    const edades = datos.map(d => d.edad ?? 0);
+    const probabilidades = datos.map(d => d.probabilidad ?? 0);
+    const predicciones = datos.map(d => d.prediccion ?? 0);
+    
+    // Gráfico 1: Probabilidad vs Predicción (Scatter)
+    new Chart(document.getElementById("grafico1"), {
+        type: "scatter",
+        data: {
+            datasets: [{
+                label: "Probabilidad vs Predicción",
+                data: datos.map(d => ({ x: d.probabilidad ?? 0, y: d.prediccion ?? 0 })),
+                backgroundColor: "rgba(54, 162, 235, 0.7)"
+            }]
+        },
+        options: {
+            plugins: {
+                title: { display: true, text: "Probabilidad vs Predicción" }
+            },
+            scales: {
+                x: { title: { display: true, text: "Probabilidad" }, min: 0, max: 1 },
+                y: { title: { display: true, text: "Predicción" }, ticks: { stepSize: 1 }, min: 0, max: 1 }
+            }
+        }
+    });
+
+    // Gráfico 2: Edad vs Predicción (Bar)
+    new Chart(document.getElementById("grafico2"), {
+        type: "bar",
+        data: {
+            labels: edades,
+            datasets: [{
+                label: "Predicción por Edad",
+                data: predicciones,
+                backgroundColor: "rgba(255, 99, 132, 0.7)"
+            }]
+        },
+        options: {
+            plugins: {
+                title: { display: true, text: "Edad vs Predicción" }
+            },
+            scales: {
+                x: { title: { display: true, text: "Edad" } },
+                y: { title: { display: true, text: "Predicción" }, ticks: { stepSize: 1 }, min: 0, max: 1 }
+            }
+        }
+    });
+
+    // --- Gráficos Motivación y Estrés ---
+
+    const motivacion = datos.map(d => d.motivacion ?? 0);
+    const estres = datos.map(d => d.estres ?? 0);
+
+    // Función para agrupar promedio de predicción por valor de variable
+    function agruparPromedio(variable, prediccion) {
+        const grupos = {};
+        variable.forEach((v, i) => {
+            if (!(v in grupos)) {
+                grupos[v] = { suma: 0, count: 0 };
+            }
+            grupos[v].suma += prediccion[i];
+            grupos[v].count += 1;
+        });
+        const labels = Object.keys(grupos).sort((a,b) => a-b);
+        const promedios = labels.map(l => grupos[l].suma / grupos[l].count);
+        return { labels, promedios };
+    }
+
+    // Agrupar motivación
+    const agrupMot = agruparPromedio(motivacion, predicciones);
+    // Agrupar estrés
+    const agrupEst = agruparPromedio(estres, predicciones);
+
+    // Gráfico Motivación vs Predicción
+    new Chart(document.getElementById("grafico_motivacion"), {
+        type: "bar",
+        data: {
+            labels: agrupMot.labels,
+            datasets: [{
+                label: "Promedio Predicción por Nivel de Motivación",
+                data: agrupMot.promedios,
+                backgroundColor: "rgba(75, 192, 192, 0.7)"
+            }]
+        },
+        options: {
+            plugins: {
+                title: { display: true, text: "Motivación vs Predicción" }
+            },
+            scales: {
+                x: { title: { display: true, text: "Nivel de Motivación" } },
+                y: { title: { display: true, text: "Promedio Predicción" }, min: 0, max: 1 }
+            }
+        }
+    });
+
+    // Gráfico Estrés vs Predicción
+    new Chart(document.getElementById("grafico_estres"), {
+        type: "bar",
+        data: {
+            labels: agrupEst.labels,
+            datasets: [{
+                label: "Promedio Predicción por Nivel de Estrés",
+                data: agrupEst.promedios,
+                backgroundColor: "rgba(255, 159, 64, 0.7)"
+            }]
+        },
+        options: {
+            plugins: {
+                title: { display: true, text: "Estrés vs Predicción" }
+            },
+            scales: {
+                x: { title: { display: true, text: "Nivel de Estrés" } },
+                y: { title: { display: true, text: "Promedio Predicción" }, min: 0, max: 1 }
+            }
+        }
+    });
+</script>
+{% endblock %}

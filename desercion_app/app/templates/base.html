@@ -59,6 +59,14 @@
                             <i class="fas fa-search me-1"></i> Búsqueda de Resultados
                         </a>
                     </li>
+
+                    <li class="nav-item">
+    <a class="nav-link {% if request.endpoint == 'main.graficos_random_forest' %}active{% endif %}"
+        href="{{ url_for('main.graficos_random_forest') }}">
+        <i class="fas fa-tree me-1"></i> RF Gráficos
+    </a>
+</li>
+
                 </ul>
 
                 <ul class="navbar-nav">
