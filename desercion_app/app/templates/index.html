@@ -137,12 +137,7 @@
     <!-- Después de la sección de gráficos -->
     {% if datos_paginados %}
     <div class="text-center mt-4">
-      <form action="{{ url_for('main.entrenar') }}" method="post">
-        <button type="submit" class="btn btn-primary btn-lg">
-          🏋️ Entrenar Modelo con estos Datos
-        </button>
-      </form>
-
+  
       <a href="{{ url_for('main.predecir') }}" class="btn btn-success btn-lg mt-3">
         🔮 Ir a Predicción
       </a>

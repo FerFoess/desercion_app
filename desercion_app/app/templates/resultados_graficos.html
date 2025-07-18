@@ -1,25 +1,40 @@
 {% extends "base.html" %}
 
+{% block title %}Gráficos de Predicción{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-    <h2>Visualización de Resultados</h2>
-
+    <h2 class="mb-4"><i class="fas fa-chart-bar"></i> Gráficos de Predicción</h2>
+    
     {% if graficos_brutos %}
-        <div class="mt-4">
-            <h4>Gráficos Exploratorios Generados:</h4>
-            <div class="row">
-                {% for graf in graficos_brutos %}
-                    <div class="col-md-6 mb-4 text-center">
-                        <h5>{{ graf.titulo }}</h5>
-                        <img src="{{ url_for('static', filename=graf.archivo) }}" class="img-fluid border rounded shadow-sm" alt="Gráfico bruto">
-                    </div>
-                {% endfor %}
+    <div class="alert alert-info">
+        Visualizando {{ graficos_brutos|length }} gráficos generados a partir de tus predicciones
+    </div>
+    
+    <div class="row row-cols-1 row-cols-md-2 g-4">
+        {% for graf in graficos_brutos %}
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">{{ graf.titulo }}</h5>
+                </div>
+                <div class="card-body">
+                    <img src="{{ url_for('static', filename=graf.nombre_archivo) }}" 
+                         class="img-fluid rounded" 
+                         alt="{{ graf.titulo }}">
+                </div>
+                <div class="card-footer bg-light">
+                    <p class="mb-0 text-muted"><small>{{ graf.descripcion }}</small></p>
+                </div>
             </div>
         </div>
+        {% endfor %}
+    </div>
     {% else %}
-        <div class="alert alert-info mt-4">
-            No se encontraron datos suficientes para generar gráficos.
-        </div>
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        No se pudieron generar gráficos. Asegúrate de haber realizado predicciones primero.
+    </div>
     {% endif %}
 </div>
 {% endblock %}
