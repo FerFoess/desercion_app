@@ -13,7 +13,7 @@ matplotlib.use('Agg')  # Configuración importante para servidor
 import matplotlib.pyplot as plt
 import seaborn as sns
 from flask import (
-    Blueprint, render_template, request, redirect, 
+    Blueprint, jsonify, render_template, request, redirect, 
     url_for, flash, send_file, session, current_app
 )
 from werkzeug.utils import secure_filename
@@ -806,31 +806,82 @@ def exportar_resultados(tipo):
 @bp.route('/explorador-datos')
 def explorador_datos():
     try:
-        # Verificación combinada más eficiente
-        cache_file = session.get('cache_resultados')
-        if not cache_file or not os.path.exists(cache_file):
-            flash('Primero debes generar predicciones o los resultados han expirado', 'error')
+        # Verificar resultados de predicción
+        if 'cache_resultados' not in session:
+            flash('Primero debes generar predicciones', 'error')
             return redirect(url_for('main.predecir'))
             
+        cache_file = session['cache_resultados']
+        if not os.path.exists(cache_file):
+            flash('Los resultados han expirado o fueron eliminados', 'error')
+            return redirect(url_for('main.predecir'))
+        
+        # Cargar resultados de predicción
         with open(cache_file, 'rb') as f:
             resultados = pickle.load(f)
-        print(f"DEBUG: Resultados cargados en explorador_datos: {resultados}")
+        
         if 'predictions' not in resultados:
-            flash('Los resultados no tienen el formato correcto', 'error')
+            flash('Formato de resultados inválido', 'error')
             return redirect(url_for('main.predecir'))
-            
-        # Pasar los resultados al template
-        return render_template('resultados_datos.html', 
+        
+        # Cargar modelo para obtener los coeficientes
+        if not model_cache.has_model():
+            flash('No hay modelo entrenado disponible', 'error')
+            return redirect(url_for('main.index'))
+        
+        modelo_cargado = model_cache.load_model()
+        print(f"DEBUG: Modelo cargado con nombre: {modelo_cargado.get('model_name', 'Desconocido')}")
+        # Diccionario de interpretaciones
+        interpretaciones = {
+                'acceso_recursos': 'Media (acceso a recursos mejora permanencia)',
+                'apoyo_familiar': 'Alta (menos apoyo familiar, mayor abandono)',
+                'asistencia': 'Alta (más asistencia, menor riesgo)',
+                'condicion_medica': 'Media (condiciones médicas pueden afectar)',
+                'conflictos_casa': 'Alta (más conflictos, mayor abandono)',
+                'conoce_apoyos': 'Alta (si conoce apoyos, menor abandono)',
+                'considera_abandonar': 'Muy alta (indicador directo de intención)',
+                'dificultad_materias': 'Media (más dificultad, mayor riesgo)',
+                'economia_dificulta': 'Alta (problemas económicos aumentan abandono)',
+                'edad': 'Media (edad más alta puede relacionarse con abandono)',
+                'estres': 'Media (mayor estrés, más riesgo)',
+                'horas_estudio': 'Alta (menos horas, más abandono)',
+                'interes_terminar': 'Alta (menos interés, mayor abandono)',
+                'materias_reprobadas': 'Baja (poca influencia directa)',
+                'motivacion': 'Alta (menos motivación, más riesgo)',
+                'nivel_escolar': 'Media (niveles bajos pueden aumentar abandono)',
+                'orientacion': 'Media (falta de orientación influye)',
+                'promedio': 'Alta (promedio bajo, más abandono)',
+                'reprobo_materia': 'Alta (reprobar influye en abandono)',
+                'sexo': 'Baja (influencia leve entre géneros)',
+                'trabaja': 'Media (trabajar puede aumentar abandono)',
+                'trabaja_apoyo': 'Baja (trabajo con apoyo afecta poco)',
+                'vive_con_tutores': 'Baja (ligera influencia del entorno familiar)'
+                }
+        
+        # Verificar que tenemos coeficientes
+        if 'coefficients' not in modelo_cargado:
+            flash('El modelo no contiene coeficientes', 'error')
+            return redirect(url_for('main.mostrar_metricas'))
+        
+        # Preparar datos para la tabla de coeficientes
+        coeficientes = []
+        for var_name, coef_value in modelo_cargado['coefficients'].items():
+            coeficientes.append((var_name, coef_value))
+        
+        return render_template('resultados_datos.html',
                             resultados=resultados['predictions'],
                             metadatos={
                                 'fecha_prediccion': resultados.get('prediction_date', 'N/A'),
-                                'modelo_usado': resultados.get('model_name', 'Desconocido')
-                            })
+                                'modelo_usado': modelo_cargado.get('model_name', 'Desconocido')
+                            },
+                            coeficientes=coeficientes,
+                            interpretacion=interpretaciones)
             
     except Exception as e:
         current_app.logger.error(f"Error en explorador_datos: {str(e)}", exc_info=True)
-        flash(f'Error técnico al cargar los resultados: {str(e)}', 'error')
+        flash(f'Error técnico: {str(e)}', 'error')
         return redirect(url_for('main.index'))
+
 
 @bp.route('/resultados/datos_json')
 def datos_json():
