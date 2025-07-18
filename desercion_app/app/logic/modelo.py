@@ -11,6 +11,8 @@ import pickle
 import base64
 from datetime import datetime
 
+from app.logic.datos import codificar_datos
+
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
