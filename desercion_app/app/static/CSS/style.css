@@ -401,3 +401,8 @@ footer .p-3 {
   background: linear-gradient(90deg, #007bff, #00c6ff);
   color: #fff;
 }
+/*Espacio extra*/
+.page-wrapper main {
+  flex: 1;
+  margin-bottom: 2rem;       /* espacio extra debajo del contenido */
+}

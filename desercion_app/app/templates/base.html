@@ -11,107 +11,112 @@
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('main.index') }}">
-                <i class="fas fa-graduation-cap me-2"></i>Deserción Escolar
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}"
-                            href="{{ url_for('main.index') }}">
-                            <i class="fas fa-home me-1"></i> Inicio
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.mostrar_metricas' %}active{% endif %}"
-                            href="{{ url_for('main.mostrar_metricas') }}">
-                            <i class="fas fa-chart-line me-1"></i> Métricas
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.predecir' %}active{% endif %}"
-                            href="{{ url_for('main.predecir') }}">
-                            <i class="fas fa-robot me-1"></i> Predicción
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.mostrar_resultados' %}active{% endif %}"
-                            href="{{ url_for('main.mostrar_resultados') }}">
-                            <i class="fas fa-chart-pie me-1"></i> Resultados
-                        </a>
-                    </li>
-                    <!-- Nuevo ítem para Gráficos -->
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.mostrar_graficos_prediccion' %}active{% endif %}"
-                            href="{{ url_for('main.mostrar_graficos_prediccion') }}">
-                            <i class="fas fa-chart-bar me-1"></i> Gráficos de Predicción
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'main.explorador_datos' %}active{% endif %}"
-                            href="{{ url_for('main.explorador_datos') }}">
-                            <i class="fas fa-search me-1"></i> Búsqueda de Resultados
-                        </a>
-                    </li>
-                </ul>
+    <div class="page-wrapper">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+            <div class="container">
+                <a class="navbar-brand" href="{{ url_for('main.index') }}">
+                    <i class="fas fa-graduation-cap me-2"></i>Deserción Escolar
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}"
+                                href="{{ url_for('main.index') }}">
+                                <i class="fas fa-home me-1"></i> Inicio
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.mostrar_metricas' %}active{% endif %}"
+                                href="{{ url_for('main.mostrar_metricas') }}">
+                                <i class="fas fa-chart-line me-1"></i> Métricas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.predecir' %}active{% endif %}"
+                                href="{{ url_for('main.predecir') }}">
+                                <i class="fas fa-robot me-1"></i> Predicción
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.mostrar_resultados' %}active{% endif %}"
+                                href="{{ url_for('main.mostrar_resultados') }}">
+                                <i class="fas fa-chart-pie me-1"></i> Resultados
+                            </a>
+                        </li>
+                        <!-- Nuevo ítem para Gráficos -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.mostrar_graficos_prediccion' %}active{% endif %}"
+                                href="{{ url_for('main.mostrar_graficos_prediccion') }}">
+                                <i class="fas fa-chart-bar me-1"></i> Gráficos de Predicción
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'main.explorador_datos' %}active{% endif %}"
+                                href="{{ url_for('main.explorador_datos') }}">
+                                <i class="fas fa-search me-1"></i> Búsqueda de Resultados
+                            </a>
+                        </li>
+                    </ul>
 
-                <ul class="navbar-nav">
-                    {% if 'cache_resultados' in session %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="exportDropdown" role="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-file-export me-1"></i> Exportar
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('main.exportar_resultados', tipo='csv') }}">
-                                    <i class="fas fa-file-csv me-2"></i> CSV
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="{{ url_for('main.exportar_resultados', tipo='excel') }}">
-                                    <i class="fas fa-file-excel me-2"></i> Excel
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                    {% endif %}
-                </ul>
+                    <ul class="navbar-nav">
+                        {% if 'cache_resultados' in session %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="exportDropdown" role="button"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-file-export me-1"></i> Exportar
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
+                                <li>
+                                    <a class="dropdown-item"
+                                        href="{{ url_for('main.exportar_resultados', tipo='csv') }}">
+                                        <i class="fas fa-file-csv me-2"></i> CSV
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item"
+                                        href="{{ url_for('main.exportar_resultados', tipo='excel') }}">
+                                        <i class="fas fa-file-excel me-2"></i> Excel
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
             </div>
-        </div>
-    </nav>
+        </nav>
 
-    <div class="container">
-        <!-- Mensajes Flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show mt-3">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-        {% endfor %}
-        {% endif %}
-        {% endwith %}
+        <div class="container">
+            <!-- Mensajes Flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div
+                class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show mt-3">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
 
-        {% block content %}{% endblock %}
+            {% block content %}{% endblock %}
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-light text-center text-lg-start shadow-sm">
+            <div class="text-center p-3 bg-primary text-white small">
+                Sistema Inteligente de Predicción de Deserción Escolar
+            </div>
+        </footer>
+
+        <!-- Scripts -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     </div>
-
-    <!-- Footer -->
-    <footer class="bg-light text-center text-lg-start shadow-sm">
-        <div class="text-center p-3 bg-primary text-white small">
-          Sistema Inteligente de Predicción de Deserción Escolar
-        </div>
-      </footer>
-
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>
