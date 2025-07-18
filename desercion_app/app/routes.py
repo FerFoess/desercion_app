@@ -1019,6 +1019,7 @@ def explorador_datos():
         flash(f'Error técnico al cargar los resultados: {str(e)}', 'error')
         return redirect(url_for('main.index'))
 
+
 @bp.route('/resultados/datos_json')
 def datos_json():
     try:
@@ -1046,8 +1047,51 @@ def datos_json():
         current_app.logger.error(f"Error en datos_json: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)})
     
-@bp.route('/graficos_rf')
+@bp.route('/graficos-random-forest')
 def graficos_random_forest():
+    try:
+        if 'cache_resultados' not in session:
+            flash("Primero debes generar predicciones", "error")
+            return redirect(url_for('main.index'))
+
+        cache_file = session['cache_resultados']
+        if not os.path.exists(cache_file):
+            flash("Archivo de resultados no encontrado", "error")
+            return redirect(url_for('main.index'))
+
+        with open(cache_file, 'rb') as f:
+            resultados = pickle.load(f)
+
+        df = pd.DataFrame(resultados['predictions'])
+
+        # Verificar columnas necesarias
+        required_cols = ['prediccion', 'probabilidad', 'edad']
+        if not all(col in df.columns for col in required_cols):
+            flash("Datos insuficientes para generar gráficos", "error")
+            return redirect(url_for('main.index'))
+
+        # Obtener importancia de características si es un modelo Random Forest
+        feature_importances = []
+        features = []
+        
+        if model_cache.has_model():
+            modelo_data = model_cache.load_model()
+            if hasattr(modelo_data['model'], 'feature_importances_'):
+                features = modelo_data.get('features', [])
+                feature_importances = modelo_data['model'].feature_importances_.tolist()
+
+        return render_template(
+            "graficos_rf.html",
+            datos=df.to_dict(orient="records"),
+            fecha=resultados.get("prediction_date", ""),
+            feature_importances=feature_importances,
+            features=features
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error en graficos_random_forest: {str(e)}", exc_info=True)
+        flash(f"Error al generar gráficos: {str(e)}", "error")
+        return redirect(url_for("main.index"))
     try:
         if 'cache_resultados' not in session:
             flash("Primero debes predecir con Random Forest", "error")
