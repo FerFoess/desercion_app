@@ -1,16 +1,19 @@
+import datetime
 import json
 import os
 import pickle
 import uuid
 import math
+import glob
 import pandas as pd
 import numpy as np
 import matplotlib
+from pip import main
 matplotlib.use('Agg')  # Configuración importante para servidor
 import matplotlib.pyplot as plt
 import seaborn as sns
 from flask import (
-    Blueprint, jsonify, render_template, request, redirect, 
+    Blueprint, render_template, request, redirect, 
     url_for, flash, send_file, session, current_app
 )
 from werkzeug.utils import secure_filename
@@ -53,6 +56,160 @@ def cargar_datos_cache(tipo='entrenamiento'):
     except Exception as e:
         current_app.logger.error(f"Error cargando datos desde caché: {str(e)}")
         raise
+    
+def verificar_permisos():
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    cache_dir = os.path.join(base_dir, 'data_cache')
+
+    
+    if not os.path.exists(cache_dir):
+        current_app.logger.error(f"Directorio no existe: {cache_dir}")
+        os.makedirs(cache_dir, exist_ok=True)
+    
+    if not os.access(cache_dir, os.R_OK):
+        current_app.logger.error(f"No hay permisos de lectura en: {cache_dir}")
+        raise PermissionError(f"No se puede leer el directorio {cache_dir}")
+    
+@bp.route('/verificar_ruta')
+def verificar_ruta():
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    cache_dir = os.path.join(base_dir, 'data_cache')
+
+
+    
+    return jsonify({
+        'base_dir': base_dir,
+        'cache_dir': cache_dir,
+        'existe': os.path.exists(cache_dir),
+        'archivos': os.listdir(cache_dir) if os.path.exists(cache_dir) else []
+    })    
+    
+"""----- CAMBIOS PARA GUARDAR LOS MODELOS DE ENTRENAMIENTO EN HISTORICOS"""
+def obtener_historial_entrenamientos():
+    try:
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        cache_dir = os.path.join(base_dir, 'data_cache')
+        
+        if not os.path.exists(cache_dir):
+            current_app.logger.error(f"Directorio no existe: {cache_dir}")
+            return []
+        
+        archivos = []
+        for f in os.listdir(cache_dir):
+            if f.lower().startswith('entrenamiento_') and f.lower().endswith('.pkl'):
+                archivo_path = os.path.join(cache_dir, f)
+                if os.path.isfile(archivo_path):
+                    archivos.append(archivo_path)
+        
+        historial = []
+        for archivo in archivos:
+            try:
+                nombre = os.path.basename(archivo)
+                stat = os.stat(archivo)
+                fecha_creacion = datetime.datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S')
+                tamano = stat.st_size
+                historial.append({
+                    'nombre': nombre,      # ✅ solo el nombre
+                    'fecha': fecha_creacion,
+                    'tamano': tamano
+                })
+            except Exception as e:
+                current_app.logger.error(f"Error procesando {archivo}: {str(e)}")
+        
+        # Ordenar por fecha descendente
+        historial.sort(key=lambda x: x['fecha'], reverse=True)
+        return historial
+        
+    except Exception as e:
+        current_app.logger.error(f"Error en obtener_historial: {str(e)}", exc_info=True)
+        return []
+    
+@bp.route('/cargar_modelo', methods=['POST'])
+def cargar_modelo():
+    try:
+        nombre_modelo = request.form.get('nombre_modelo')
+        if not nombre_modelo:
+            return jsonify({'success': False, 'message': 'Nombre de modelo no proporcionado'})
+        
+        base_dir = os.path.abspath(os.path.dirname(__file__))
+        ruta_modelo = os.path.join(base_dir, '..', 'data_cache', nombre_modelo)
+        
+        if not os.path.exists(ruta_modelo):
+            return jsonify({'success': False, 'message': 'Archivo de modelo no encontrado'})
+        
+        session['cache_file_entrenamiento'] = ruta_modelo
+        session.modified = True
+        
+        return jsonify({
+            'success': True,
+            'message': 'Modelo cargado correctamente',
+            'nombre_modelo': nombre_modelo
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Error: {str(e)}'})
+
+@bp.route('/eliminar_modelo', methods=['POST'])
+def eliminar_modelo():
+    """Elimina un modelo del historial"""
+    try:
+        nombre_modelo = request.form.get('nombre_modelo')
+        if nombre_modelo:
+            ruta_modelo = os.path.join('data_cache', nombre_modelo)
+            if os.path.exists(ruta_modelo):
+                # Si es el modelo actualmente cargado, limpiar la sesión
+                if 'cache_file_entrenamiento' in session and session['cache_file_entrenamiento'] == ruta_modelo:
+                    limpiar_cache('entrenamiento')
+                os.remove(ruta_modelo)
+                return jsonify({'success': True, 'message': 'Modelo eliminado correctamente'})
+        return jsonify({'success': False, 'message': 'Error al eliminar el modelo'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/obtener_historial', methods=['GET'])
+def obtener_historial():
+    """Devuelve el historial de modelos en formato JSON"""
+    try:
+        historial = obtener_historial_entrenamientos()
+        current_app.logger.info(f"[ROUTE DEBUG] Historial devuelto por la función: {historial}")
+        return jsonify({
+            'success': True,
+            'historial': historial,
+            'count': len(historial)
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e),
+            'historial': [],
+            'count': 0
+        })
+        
+@bp.route('/debug_archivos')
+def debug_archivos():
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    cache_dir = os.path.join(base_dir, 'data_cache')
+
+    
+    return jsonify({
+        'base_dir': base_dir,
+        'cache_dir': cache_dir,
+        'existe': os.path.exists(cache_dir),
+        'archivos': os.listdir(cache_dir) if os.path.exists(cache_dir) else []
+    })
+    
+@bp.route('/debug_directorios')
+def debug_directorios():
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    cache_dir = os.path.join(base_dir, 'data_cache')
+
+
+    
+    return jsonify({
+        'base_dir': base_dir,
+        'cache_dir': cache_dir,
+        'existe_cache': os.path.exists(cache_dir),
+        'archivos_en_cache': os.listdir(cache_dir) if os.path.exists(cache_dir) else []
+    })
 
 def limpiar_cache(tipo='all'):
     """Elimina archivos de caché"""
@@ -382,7 +539,7 @@ def mostrar_metricas():
 @bp.route('/predecir', methods=['GET', 'POST'])
 def predecir():
     if request.method == 'POST':
-        # Verificar si el archivo fue enviado
+        # Verificar si el arachhivo fue enviado
         if 'archivo_prediccion' not in request.files:
             flash('No se seleccionó archivo', 'error')
             return redirect(url_for('main.predecir'))
