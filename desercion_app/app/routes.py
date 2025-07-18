@@ -803,7 +803,6 @@ def exportar_resultados(tipo):
         flash(f'Error al exportar resultados: {str(e)}', 'error')
         return redirect(url_for('main.mostrar_resultados'))
     
-
 @bp.route('/explorador-datos')
 def explorador_datos():
     try:
@@ -858,4 +857,4 @@ def datos_json():
         
     except Exception as e:
         current_app.logger.error(f"Error en datos_json: {str(e)}", exc_info=True)
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(e)})

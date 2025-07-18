@@ -20,7 +20,13 @@
         {% for key, value in metricas.items() %}
         <tr>
           <td><strong>{{ key }}</strong></td>
-          <td>{{ "%.4f"|format(value) }}</td>
+          <td>
+  {% if value is iterable and value is not string %}
+    {{ value|join(', ') }}
+  {% else %}
+    {{ "%.4f"|format(value) }}
+  {% endif %}
+</td>
           <td>
             {% if key == 'accuracy' %}
               Proporción de predicciones correctas sobre el total. Un valor cercano a 1 indica que el modelo tiene una alta tasa de aciertos.
@@ -46,9 +52,24 @@
   <h3 class="mb-3">Visualización de las Métricas</h3>
   <canvas id="metricsChart" height="120"></canvas>
 
-<a href="{{ url_for('main.exportar_resultados', tipo='excel') }}" class="btn btn-outline-dark me-2">Exportar Excel</a>
-<a href="{{ url_for('main.exportar_resultados', tipo='csv') }}" class="btn btn-outline-dark me-2">Exportar CSV</a>
+  <div class="mt-4">
+    <a href="{{ url_for('main.resultados_predicciones') }}" class="btn btn-outline-primary me-2">Ver Predicciones</a>
+    <a href="{{ url_for('main.resultados_graficos') }}" class="btn btn-outline-success me-2">Ver Más Gráficos</a>
+    <a href="{{ url_for('main.resultados_exportar') }}" class="btn btn-outline-dark me-2">Exportar</a>
+    <a href="{{ url_for('main.index') }}" class="btn btn-secondary">← Volver</a>
+  </div>
 
+  <!-- Información sobre la veracidad del modelo -->
+  <div class="mt-5 alert alert-info">
+    <h5><strong>¿Qué tan confiable es este modelo?</strong></h5>
+    <p>La veracidad de este modelo de regresión logística depende de varios factores:</p>
+    <ul>
+      <li><strong>Tamaño del conjunto de datos:</strong> A mayor cantidad de datos, mayor será la capacidad del modelo para generalizar y realizar predicciones precisas.</li>
+      <li><strong>Balance de clases:</strong> Si el modelo tiene muchos más casos de estudiantes que no desertan que de los que desertan, podría tener una mayor precisión, pero no ser efectivo para predecir desertores. Es importante verificar que el modelo esté aprendiendo de ambas clases correctamente.</li>
+      <li><strong>Evaluación de métricas:</strong> Las métricas como precisión, recall, y AUC te dirán si el modelo está cometiendo más errores de tipo falso positivo o falso negativo, y si está discriminando bien entre las clases.</li>
+    </ul>
+    <p>En resumen, si bien el modelo puede ser confiable, es fundamental evaluar todas las métricas y el comportamiento con los datos disponibles para asegurar que se está utilizando correctamente.</p>
+  </div>
 
 </div>
 
