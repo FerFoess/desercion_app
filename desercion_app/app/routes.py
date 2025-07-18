@@ -1045,3 +1045,48 @@ def datos_json():
     except Exception as e:
         current_app.logger.error(f"Error en datos_json: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)})
+    
+@bp.route('/graficos_rf')
+def graficos_random_forest():
+    try:
+        if 'cache_resultados' not in session:
+            flash("Primero debes predecir con Random Forest", "error")
+            return redirect(url_for('main.index'))
+
+        cache_file = session['cache_resultados']
+        if not os.path.exists(cache_file):
+            flash("Archivo de resultados no encontrado", "error")
+            return redirect(url_for('main.index'))
+
+        with open(cache_file, 'rb') as f:
+            resultados = pickle.load(f)
+
+        df = pd.DataFrame(resultados['predictions'])
+
+        if not all(col in df.columns for col in ['prediccion', 'probabilidad', 'edad']):
+            flash("No hay columnas suficientes para graficar", "error")
+            return redirect(url_for('main.index'))
+
+        cache_manager = ModelCacheManager()
+        modelo_entrenado = cache_manager.load_model()
+
+        if modelo_entrenado is None:
+            feature_importances = []
+            features = []
+            logger.warning("No se encontró modelo entrenado en caché para obtener importancias")
+        else:
+            feature_importances = modelo_entrenado.get('feature_importances', [])
+            features = modelo_entrenado.get('features', [])
+
+        return render_template(
+            "graficos_rf.html",
+            datos=df.to_dict(orient="records"),
+            fecha=resultados.get("prediction_date", ""),
+            feature_importances=feature_importances,
+            features=features
+        )
+
+    except Exception as e:
+        logger.error(f"Error en graficos_rf: {str(e)}")
+        flash(f"Error técnico al generar gráficas: {str(e)}", "error")
+        return redirect(url_for("main.index"))
