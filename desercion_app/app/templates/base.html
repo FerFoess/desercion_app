@@ -53,6 +53,12 @@
                             <i class="fas fa-chart-bar me-1"></i> Gráficos de Predicción
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'main.explorador_datos' %}active{% endif %}"
+                            href="{{ url_for('main.explorador_datos') }}">
+                            <i class="fas fa-search me-1"></i> Búsqueda de Resultados
+                        </a>
+                    </li>
                 </ul>
 
                 <ul class="navbar-nav">

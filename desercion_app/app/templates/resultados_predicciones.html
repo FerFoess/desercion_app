@@ -1,86 +1,336 @@
 {% extends "base.html" %}
 
+{% block title %}Resultados del Modelo Predictivo{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-  <div class="row">
-    <!-- Tabla: Coeficientes del Modelo -->
-    <div class="col-md-6">
-      <h5 class="mb-3">Coeficientes del Modelo</h5>
-      <table class="table table-bordered table-striped table-sm">
-        <thead class="table-light">
-          <tr>
-            <th>Variable</th>
-            <th>Valor del Modelo</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for variable, valor in coeficientes %}
-            <tr>
-              <td>{{ variable }}</td>
-              <td>{{ '%.4f' % valor }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Tabla: Interpretación Humana -->
-    <div class="col-md-6">
-      <h5 class="mb-3">Interpretación Humana</h5>
-      <table class="table table-bordered table-hover table-sm">
-        <thead class="table-light">
-          <tr>
-            <th>Variable</th>
-            <th>Interpretación Estimada</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for variable, _ in coeficientes %}
-            <tr>
-              <td>{{ variable }}</td>
-              <td>{{ interpretacion.get(variable, "Interpretación no disponible") }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+  <!-- Encabezado -->
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-10 text-center">
+      <h2 class="mb-3">
+        <i class="fas fa-chart-line text-primary me-2"></i>
+        Resultados del Modelo Predictivo
+      </h2>
+      <p class="text-muted">Análisis detallado de coeficientes y predicciones</p>
     </div>
   </div>
 
-  <!-- Tabla de predicciones (dinámica por JS si la usas más adelante) -->
-  <div class="row mt-4">
-    <div class="col">
-      <h5>Resultados de Predicción</h5>
-      <div id="tabla-filtrada"></div>
+  <!-- Sección de coeficientes e interpretación -->
+  <div class="row justify-content-center mb-4">
+    <!-- Coeficientes del Modelo -->
+    <div class="col-md-5 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-primary text-white text-center">
+          <h5 class="mb-0">
+            <i class="fas fa-percentage me-2"></i>Coeficientes del Modelo
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height: 400px;">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th class="text-center">Variable</th>
+                  <th class="text-center">Coeficiente</th>
+                  <th class="text-center">Impacto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for variable, valor in coeficientes %}
+                <tr>
+                  <td class="text-center">{{ variable }}</td>
+                  <td class="text-center">{{ '%.4f' % valor }}</td>
+                  <td class="text-center">
+                    {% if valor > 0 %}
+                      <span class="badge bg-danger">↑ Riesgo</span>
+                    {% elif valor < 0 %}
+                      <span class="badge bg-success">↓ Protección</span>
+                    {% else %}
+                      <span class="badge bg-secondary">Neutro</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interpretación Humana -->
+    <div class="col-md-5 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-header bg-primary text-white text-center">
+          <h5 class="mb-0">
+            <i class="fas fa-comment-dots me-2"></i>Interpretación Humana
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height: 400px;">
+            <table class="table table-hover table-sm mb-0">
+              <thead class="table-light sticky-top">
+                <tr>
+                  <th class="text-center">Variable</th>
+                  <th class="text-center">Significado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for variable, _ in coeficientes %}
+                <tr>
+                  <td class="text-center">{{ variable }}</td>
+                  <td>
+                    <small>{{ interpretacion.get(variable, "Interpretación no disponible") }}</small>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sección de predicciones -->
+  <div class="row justify-content-center">
+    <div class="col-md-10">
+      <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white text-center">
+          <h5 class="mb-0">
+            <i class="fas fa-table me-2"></i>Resultados de Predicción
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div id="tabla-filtrada" class="table-responsive" style="max-height: 500px;">
+            <div class="text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              <p class="mt-2">Cargando datos de predicción...</p>
+            </div>
+          </div>
+          
+          <!-- Paginación -->
+          <nav id="pagination-container" class="d-flex justify-content-center p-3" style="display: none !important;">
+            <ul class="pagination pagination-sm mb-0">
+              <li class="page-item disabled" id="prev-page">
+                <a class="page-link" href="#" tabindex="-1">Anterior</a>
+              </li>
+              <li class="page-item active"><a class="page-link" href="#">1</a></li>
+              <li class="page-item"><a class="page-link" href="#">2</a></li>
+              <li class="page-item"><a class="page-link" href="#">3</a></li>
+              <li class="page-item" id="next-page">
+                <a class="page-link" href="#">Siguiente</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-  document.addEventListener("DOMContentLoaded", function() {
-    fetch('/resultados/datos_json')
-      .then(response => response.json())
-      .then(data => mostrarTabla(data))
-      .catch(error => console.error("Error al obtener los datos:", error));
+// Variables para paginación
+let currentPage = 1;
+const rowsPerPage = 10;
+let allData = [];
+
+document.addEventListener("DOMContentLoaded", function() {
+  fetch('/resultados/datos_json')
+    .then(response => {
+      if (!response.ok) throw new Error('Error en la respuesta');
+      return response.json();
+    })
+    .then(data => {
+      if (data.error) {
+        mostrarError(data.error);
+        return;
+      }
+      allData = data;
+      mostrarTablaPaginated(data);
+      setupPagination(data);
+    })
+    .catch(error => {
+      console.error("Error al obtener los datos:", error);
+      mostrarError("Error al cargar los datos: " + error.message);
+    });
+});
+
+function mostrarTablaPaginated(data) {
+  const contenedor = document.getElementById("tabla-filtrada");
+  
+  if (!data || data.length === 0) {
+    contenedor.innerHTML = `
+      <div class="text-center py-5">
+        <i class="fas fa-database fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">No hay datos de predicción disponibles</h5>
+        <p class="text-muted">Ejecuta el modelo para generar resultados</p>
+      </div>
+    `;
+    return;
+  }
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const paginatedData = data.slice(start, end);
+  
+  const columnas = Object.keys(paginatedData[0]).filter(col => !['id', 'internal_id'].includes(col));
+  
+  let html = `
+    <table class="table table-striped table-hover table-sm align-middle">
+      <thead class="table-light sticky-top">
+        <tr>
+          ${columnas.map(col => `<th class="text-center">${col.replace(/_/g, ' ').toUpperCase()}</th>`).join('')}
+          <th class="text-center">ACCIÓN</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  paginatedData.forEach((row, index) => {
+    const esRiesgo = row.prediccion === 1;
+    html += `
+      <tr class="${esRiesgo ? 'table-danger' : 'table-success'}">
+        ${columnas.map(col => {
+          let valor = row[col];
+          if (col === 'probabilidad') {
+            valor = `<div class="progress mx-auto" style="height: 20px; width: 80%;">
+              <div class="progress-bar ${esRiesgo ? 'bg-danger' : 'bg-success'}" 
+                   role="progressbar" 
+                   style="width: ${(valor * 100).toFixed(1)}%" 
+                   aria-valuenow="${(valor * 100).toFixed(1)}" 
+                   aria-valuemin="0" 
+                   aria-valuemax="100">
+                ${(valor * 100).toFixed(1)}%
+              </div>
+            </div>`;
+          } else if (col === 'prediccion') {
+            valor = esRiesgo 
+              ? '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle"></i> Riesgo</span>' 
+              : '<span class="badge bg-success"><i class="fas fa-check-circle"></i> Seguro</span>';
+          }
+          return `<td class="text-center align-middle">${valor}</td>`;
+        }).join('')}
+        <td class="text-center align-middle">
+          <button class="btn btn-sm btn-outline-primary" onclick="mostrarDetallePrediccion(${start + index})">
+            <i class="fas fa-search"></i>
+          </button>
+        </td>
+      </tr>
+    `;
   });
 
-  function mostrarTabla(datos) {
-    if (datos.length === 0) {
-      document.getElementById("tabla-filtrada").innerHTML = "<p class='text-muted'>❌ No hay datos disponibles.</p>";
-      return;
-    }
+  html += `</tbody></table>`;
+  contenedor.innerHTML = html;
+}
 
-    const columnas = Object.keys(datos[0]);
-    let html = '<table class="table table-striped table-bordered table-sm table-hover align-middle">';
-    html += '<thead class="table-light sticky-top"><tr>';
-    columnas.forEach(col => html += `<th>${col}</th>`);
-    html += '</tr></thead><tbody>';
-    datos.forEach(row => {
-      html += '<tr>';
-      columnas.forEach(col => html += `<td>${row[col]}</td>`);
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
-    document.getElementById("tabla-filtrada").innerHTML = html;
+function setupPagination(data) {
+  if (!data || data.length === 0) return;
+  
+  const pagination = document.getElementById('pagination-container');
+  pagination.style.display = 'flex';
+  
+  const pageCount = Math.ceil(data.length / rowsPerPage);
+  const paginationList = pagination.querySelector('.pagination');
+  
+  // Limpiar paginación existente (excepto los botones anterior/siguiente)
+  while (paginationList.children.length > 2) {
+    paginationList.removeChild(paginationList.lastChild);
   }
+  
+  // Agregar números de página
+  for (let i = 1; i <= pageCount; i++) {
+    const li = document.createElement('li');
+    li.className = `page-item ${i === 1 ? 'active' : ''}`;
+    li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+    
+    li.addEventListener('click', function(e) {
+      e.preventDefault();
+      currentPage = i;
+      mostrarTablaPaginated(allData);
+      updatePaginationUI();
+    });
+    
+    paginationList.insertBefore(li, paginationList.lastChild);
+  }
+  
+  // Configurar botones anterior/siguiente
+  document.getElementById('prev-page').addEventListener('click', function(e) {
+    e.preventDefault();
+    if (currentPage > 1) {
+      currentPage--;
+      mostrarTablaPaginated(allData);
+      updatePaginationUI();
+    }
+  });
+  
+  document.getElementById('next-page').addEventListener('click', function(e) {
+    e.preventDefault();
+    if (currentPage < pageCount) {
+      currentPage++;
+      mostrarTablaPaginated(allData);
+      updatePaginationUI();
+    }
+  });
+}
+
+function updatePaginationUI() {
+  const pageItems = document.querySelectorAll('.pagination .page-item');
+  pageItems.forEach(item => {
+    item.classList.remove('active');
+    if (parseInt(item.textContent) === currentPage) {
+      item.classList.add('active');
+    }
+  });
+  
+  document.getElementById('prev-page').classList.toggle('disabled', currentPage === 1);
+  document.getElementById('next-page').classList.toggle('disabled', currentPage === Math.ceil(allData.length / rowsPerPage));
+}
+
+function mostrarError(mensaje) {
+  const contenedor = document.getElementById("tabla-filtrada");
+  contenedor.innerHTML = `
+    <div class="alert alert-danger m-3 text-center">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      ${mensaje}
+    </div>
+  `;
+}
 </script>
+
+<style>
+.card {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+.card-header {
+  padding: 0.75rem 1.25rem;
+}
+.table-responsive {
+  border-radius: 0.5rem;
+}
+.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.progress {
+  background-color: #e9ecef;
+}
+.table-hover tbody tr:hover {
+  transform: scale(1.01);
+  transition: transform 0.1s ease;
+}
+.table-danger td {
+  background-color: rgba(220, 53, 69, 0.05);
+}
+.table-success td {
+  background-color: rgba(25, 135, 84, 0.05);
+}
+.pagination {
+  margin-top: 0;
+}
+</style>
 {% endblock %}

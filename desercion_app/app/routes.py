@@ -10,7 +10,7 @@ matplotlib.use('Agg')  # Configuración importante para servidor
 import matplotlib.pyplot as plt
 import seaborn as sns
 from flask import (
-    Blueprint, render_template, request, redirect, 
+    Blueprint, jsonify, render_template, request, redirect, 
     url_for, flash, send_file, session, current_app
 )
 from werkzeug.utils import secure_filename
@@ -636,3 +636,60 @@ def exportar_resultados(tipo):
         current_app.logger.error(f"Error exportando resultados: {str(e)}", exc_info=True)
         flash(f'Error al exportar resultados: {str(e)}', 'error')
         return redirect(url_for('main.mostrar_resultados'))
+    
+
+@bp.route('/explorador-datos')
+def explorador_datos():
+    try:
+        # Verificación combinada más eficiente
+        cache_file = session.get('cache_resultados')
+        if not cache_file or not os.path.exists(cache_file):
+            flash('Primero debes generar predicciones o los resultados han expirado', 'error')
+            return redirect(url_for('main.predecir'))
+            
+        with open(cache_file, 'rb') as f:
+            resultados = pickle.load(f)
+        print(f"DEBUG: Resultados cargados en explorador_datos: {resultados}")
+        if 'predictions' not in resultados:
+            flash('Los resultados no tienen el formato correcto', 'error')
+            return redirect(url_for('main.predecir'))
+            
+        # Pasar los resultados al template
+        return render_template('resultados_datos.html', 
+                            resultados=resultados['predictions'],
+                            metadatos={
+                                'fecha_prediccion': resultados.get('prediction_date', 'N/A'),
+                                'modelo_usado': resultados.get('model_name', 'Desconocido')
+                            })
+            
+    except Exception as e:
+        current_app.logger.error(f"Error en explorador_datos: {str(e)}", exc_info=True)
+        flash(f'Error técnico al cargar los resultados: {str(e)}', 'error')
+        return redirect(url_for('main.index'))
+
+@bp.route('/resultados/datos_json')
+def datos_json():
+    try:
+        # Verificar si hay resultados en caché
+        if 'cache_resultados' not in session:
+            return jsonify({'error': 'No hay datos disponibles'}), 404
+            
+        cache_file = session['cache_resultados']
+        
+        # Verificar que el archivo existe físicamente
+        if not os.path.exists(cache_file):
+            return jsonify({'error': 'Archivo de resultados no encontrado'}), 404
+            
+        # Cargar y devolver los datos
+        with open(cache_file, 'rb') as f:
+            resultados = pickle.load(f)
+        
+        # Asegurar que tenemos predictions
+        if 'predictions' not in resultados:
+            return jsonify({'error': 'Formato de datos inválido'}), 500
+            
+        return jsonify(resultados['predictions'])
+        
+    except Exception as e:
+        current_app.logger.error(f"Error en datos_json: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
