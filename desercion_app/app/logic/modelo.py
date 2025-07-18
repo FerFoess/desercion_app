@@ -64,10 +64,10 @@ class ModelCacheManager:
 
     def load_model(self):
         """Carga modelos nuevos (v2.0) y antiguos (v1.0)"""
+    # 🚨 Rebuscar el modelo cada vez por seguridad
+        self.current_model_path = self._find_latest_model()
         if not self.current_model_path:
-            self.current_model_path = self._find_latest_model()
-            if not self.current_model_path:
-                raise ValueError("No hay modelos válidos en caché")
+            raise ValueError("No hay modelos válidos en caché")
         
         try:
             with open(self.current_model_path, 'rb') as f:
@@ -166,13 +166,13 @@ def train_model(training_data, cache_manager=None):
         # 6. Métricas
         y_pred = model.predict(X_scaled)
         metrics = {
-            'accuracy': round(accuracy_score(y, y_pred), 3),
-            'precision': round(precision_score(y, y_pred), 3),
-            'recall': round(recall_score(y, y_pred), 3),
-            'f1': round(f1_score(y, y_pred), 3),
-            'cv_accuracy': [round(score, 3) for score in cv_scores],
-            'cv_mean_accuracy': round(cv_scores.mean(), 3)
-        }
+    'accuracy': round(accuracy_score(y, y_pred), 3),
+    'precision': round(precision_score(y, y_pred), 3),
+    'recall': round(recall_score(y, y_pred), 3),
+    'f1': round(f1_score(y, y_pred), 3),
+    # 'cv_accuracy': [round(score, 3) for score in cv_scores],  # <-- Eliminar esta línea
+    'cv_mean_accuracy': round(cv_scores.mean(), 3)
+}
 
         # Crear estructura del modelo
         trained_model = {

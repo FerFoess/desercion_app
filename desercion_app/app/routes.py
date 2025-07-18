@@ -608,23 +608,32 @@ def generar_graficos_prediccion(df):
 
 @bp.route('/exportar/<tipo>')
 def exportar_resultados(tipo):
-    if 'resultados_prediccion' not in session:
+    if 'cache_resultados' not in session:
         flash('No hay resultados para exportar', 'error')
         return redirect(url_for('main.predecir'))
     
+    cache_file = session['cache_resultados']
+    if not os.path.exists(cache_file):
+        flash('Los resultados han expirado o fueron eliminados', 'error')
+        return redirect(url_for('main.predecir'))
+    
+    with open(cache_file, 'rb') as f:
+        resultados = pickle.load(f)
+    
     try:
-        resultados = session['resultados_prediccion']
         df = pd.DataFrame(resultados['predictions'])
         
+        # Crear carpeta temporal dentro de static para exportar
+        output_dir = os.path.join(current_app.static_folder, 'temp')
+        os.makedirs(output_dir, exist_ok=True)
+
         if tipo == 'csv':
-            output_path = os.path.join(current_app.static_folder, 'temp', 'resultados_prediccion.csv')
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            output_path = os.path.join(output_dir, 'resultados_prediccion.csv')
             df.to_csv(output_path, index=False)
             return send_file(output_path, as_attachment=True)
         
         elif tipo == 'excel':
-            output_path = os.path.join(current_app.static_folder, 'temp', 'resultados_prediccion.xlsx')
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            output_path = os.path.join(output_dir, 'resultados_prediccion.xlsx')
             df.to_excel(output_path, index=False)
             return send_file(output_path, as_attachment=True)
         
