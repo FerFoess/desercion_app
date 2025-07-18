@@ -79,6 +79,11 @@
                                     <i class="fas fa-file-excel me-2"></i> Excel
                                 </a>
                             </li>
+                             <li>
+                                <a class="dropdown-item" href="{{ url_for('main.exportar_resultados', tipo='pdf') }}">
+                                    <i class="fas fa-file-pdf me-2"></i> PDF
+                                </a>
+                            </li>
                         </ul>
                     </li>
                     {% endif %}

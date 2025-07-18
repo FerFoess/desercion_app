@@ -170,7 +170,6 @@ def obtener_historial():
     """Devuelve el historial de modelos en formato JSON"""
     try:
         historial = obtener_historial_entrenamientos()
-        current_app.logger.info(f"[ROUTE DEBUG] Historial devuelto por la función: {historial}")
         return jsonify({
             'success': True,
             'historial': historial,
@@ -238,40 +237,30 @@ def limpiar_cache(tipo='all'):
         current_app.logger.error(f"Error limpiando caché: {str(e)}")
 
 def guardar_grafico(plt, prefix):
-    """
-    Guarda el gráfico generado y devuelve el path relativo desde static.
-    """
-    # Crear el directorio si no existe: static/img/graficos
-    img_dir = os.path.join(current_app.static_folder, 'img', 'graficos')
+    """Guarda gráficos en img/graficos con estructura consistente"""
+    img_dir = os.path.join(current_app.static_folder, 'img')
     os.makedirs(img_dir, exist_ok=True)
-
-    # Generar un nombre único
+    
     nombre_archivo = f"{prefix}_{uuid.uuid4().hex[:6]}.png"
-
-    # Ruta completa para guardar
-    filepath = os.path.join(img_dir, nombre_archivo)
-
-    # Guardar y cerrar el gráfico
-    plt.savefig(filepath, bbox_inches='tight', dpi=150)
+    ruta_completa = os.path.join(img_dir, nombre_archivo)
+    
+    plt.savefig(ruta_completa, bbox_inches='tight', dpi=150)
     plt.close()
-
-    # Retornar solo la ruta relativa desde static, por ejemplo:
-    # 'img/graficos/train_edad_xxxxxx.png'
-    return f'img/graficos/{nombre_archivo}'
-
+    
+    return f'img/{nombre_archivo}'
 
 def limpiar_graficos_anteriores(tipo='all'):
-    """Elimina gráficos antiguos del tipo especificado"""
-    img_dir = os.path.join(current_app.static_folder, 'img', 'graficos')
+    """Elimina gráficos antiguos manteniendo estructura"""
+    img_dir = os.path.join(current_app.static_folder, 'img')
     if os.path.exists(img_dir):
         for f in os.listdir(img_dir):
             if f.endswith('.png'):
-                if tipo == 'all' or f.startswith(tipo):
+                if tipo == 'all' or f.startswith(f"{tipo}_"):
                     try:
                         os.remove(os.path.join(img_dir, f))
-                        current_app.logger.info(f"Gráfico eliminado: {f}")
                     except Exception as e:
                         current_app.logger.warning(f"No se pudo eliminar {f}: {str(e)}")
+
 
 def generar_graficos_brutos(df, prefix='train'):
     graficos = []
@@ -356,14 +345,14 @@ def generar_graficos_brutos(df, prefix='train'):
 
 def obtener_graficos_guardados(prefix=None):
     graficos = []
-    img_dir = os.path.join(current_app.static_folder, 'img', 'graficos')
+    img_dir = os.path.join(current_app.static_folder, 'img' )
     
     if os.path.exists(img_dir):
         # Mapeo de prefijos a títulos legibles
         nombres_legibles = {
             'train': 'Entrenamiento',
             'pred': 'Predicción',
-            'eval': 'Evaluación'
+            'prev': 'Preevaluación',
         }
         
         # Obtener archivos ordenados por fecha de modificación (más recientes primero)
@@ -380,7 +369,7 @@ def obtener_graficos_guardados(prefix=None):
                     
                     graficos.append({
                         'titulo': titulo,
-                        'nombre_archivo': f'img/graficos/{f}',
+                        'nombre_archivo': f'img/{f}',
                         'tipo': file_prefix
                     })
     
@@ -563,8 +552,8 @@ def predecir():
                 guardar_datos_cache(df, 'prediccion')
                 
                 # Generar gráficos exploratorios
-                limpiar_graficos_anteriores('pred')
-                generar_graficos_brutos(df, 'pred')
+                limpiar_graficos_anteriores('prev')
+                generar_graficos_brutos(df, 'prev')
                 
                 flash('Archivo para predicción cargado correctamente', 'success')
                 return redirect(url_for('main.predecir'))
@@ -589,7 +578,7 @@ def predecir():
     return render_template('prediccion.html',
         datos_prediccion=df_pred.to_dict('records') if df_pred is not None else [],
         columnas_prediccion=df_pred.columns.tolist() if df_pred is not None else [],
-        graficos_prediccion=obtener_graficos_guardados('pred'),
+        graficos_prediccion=obtener_graficos_guardados('prev'),
         modelo_entrenado=modelo_entrenado
     )
 
@@ -615,7 +604,7 @@ def ejecutar_prediccion():
         
         # 4. Ejecutar predicción
         resultados = predict(modelo_cargado, df_pred)
-        print(f"DEBUG: Resultados de la predicción: {resultados}")
+    
         if not resultados['success']:
             flash(f'Error en predicción: {resultados["error"]}', 'error')
             return redirect(url_for('main.predecir'))
@@ -638,133 +627,218 @@ def ejecutar_prediccion():
 @bp.route('/resultados')
 def mostrar_resultados():
     try:
-        # 1. Verificar si existe caché de resultados
+        # 1. Verificar si existe caché de resultados en sesión
         if 'cache_resultados' not in session:
-            flash('No hay resultados de predicción disponibles', 'error')
+            current_app.logger.warning("Intento de acceder a resultados sin caché en sesión")
+            flash('No hay resultados de predicción disponibles. Por favor, ejecuta una predicción primero.', 'error')
             return redirect(url_for('main.predecir'))
         
-        # 2. Cargar desde caché
+        # 2. Obtener ruta del archivo de caché
         cache_file = session['cache_resultados']
+        current_app.logger.debug(f"Intentando cargar archivo de caché: {cache_file}")
+        
+        # 3. Verificar que el archivo de caché existe físicamente
         if not os.path.exists(cache_file):
-            flash('Los resultados han expirado o fueron eliminados', 'error')
+            current_app.logger.error(f"Archivo de caché no encontrado: {cache_file}")
+            session.pop('cache_resultados', None)  # Limpiar referencia inválida
+            flash('Los resultados han expirado o fueron eliminados. Por favor, ejecuta una nueva predicción.', 'error')
             return redirect(url_for('main.predecir'))
         
-        with open(cache_file, 'rb') as f:
-            resultados = pickle.load(f)
+        # 4. Cargar resultados desde el archivo
+        try:
+            with open(cache_file, 'rb') as f:
+                resultados = pickle.load(f)
+            current_app.logger.debug("Resultados cargados correctamente desde caché")
+        except (pickle.PickleError, EOFError) as e:
+            current_app.logger.error(f"Error al deserializar archivo de caché: {str(e)}")
+            flash('Error al leer los resultados guardados. El archivo puede estar corrupto.', 'error')
+            return redirect(url_for('main.predecir'))
         
-        # Debug: Verificar estructura
-        print(f"DEBUG - Resultados cargados. Estructura: {type(resultados)}")
-        if isinstance(resultados, dict):
-            print(f"Claves disponibles: {resultados.keys()}")
-        
-        # 3. Validar estructura básica
-        if 'predictions' not in resultados:
+        # 5. Validar estructura de los resultados
+        if not isinstance(resultados, dict):
+            current_app.logger.error(f"Resultados no son un diccionario. Tipo: {type(resultados)}")
             flash('Formato de resultados inválido', 'error')
             return redirect(url_for('main.predecir'))
         
-        # 4. Procesar resultados
-        df_resultados = pd.DataFrame(resultados['predictions'])
+        if 'predictions' not in resultados:
+            current_app.logger.error("Diccionario de resultados no contiene clave 'predictions'")
+            flash('Los resultados no contienen datos de predicción', 'error')
+            return redirect(url_for('main.predecir'))
         
-        # 5. Generar gráficos (si aplica)
-        graficos_resultados = []
-        if 'probabilidad' in df_resultados.columns:
-            try:
-                plt.figure(figsize=(10, 6))
-                sns.histplot(df_resultados['probabilidad'], bins=20, kde=True)
-                plt.title('Distribución de Probabilidades de Abandono')
-                grafico_path = guardar_grafico(plt, 'res_probabilidades')
-                graficos_resultados.append(grafico_path)
-                plt.close()
-            except Exception as e:
-                current_app.logger.error(f"Error generando gráfico: {str(e)}")
+        # 6. Convertir a DataFrame con manejo de errores
+        try:
+            df_resultados = pd.DataFrame(resultados['predictions'])
+            current_app.logger.debug(f"DataFrame creado con {len(df_resultados)} registros")
+        except Exception as e:
+            current_app.logger.error(f"Error al crear DataFrame: {str(e)}")
+            flash('Error al procesar los datos de predicción', 'error')
+            return redirect(url_for('main.predecir'))
         
-        # 6. Renderizar plantilla
-        return render_template('resultados_predicciones.html',
-                            predicciones=resultados['predictions'],
-                            fecha_prediccion=resultados.get('prediction_date', 'N/A'),
-                            graficos_resultados=graficos_resultados,
-                            metricas=resultados.get('metrics', {}))
+        # 7. Preparar datos para la plantilla con valores por defecto seguros
+        template_data = {
+            'predicciones': resultados.get('predictions', []),
+            'fecha_prediccion': resultados.get('prediction_date', 'No disponible'),
+            'metricas': resultados.get('metrics', {}),
+            'nombre_modelo': resultados.get('model_name', 'Modelo no especificado')
+        }
+        
+        # 8. Verificar si hay gráficos disponibles
+        if 'graficos' in resultados:
+            template_data['graficos_resultados'] = resultados['graficos']
+        
+        current_app.logger.info("Mostrando resultados de predicción")
+        return render_template('resultados_predicciones.html', **template_data)
     
     except Exception as e:
-        current_app.logger.error(f"Error mostrando resultados: {str(e)}", exc_info=True)
-        flash('Error al procesar los resultados', 'error')
-        return redirect(url_for('main.predecir'))
-
+        current_app.logger.error(f"Error inesperado en mostrar_resultados: {str(e)}", exc_info=True)
+        flash('Ocurrió un error inesperado al mostrar los resultados. Por favor, inténtalo nuevamente.', 'error')
+        return redirect(url_for('main.index'))
 
 @bp.route('/graficos-prediccion')
 def mostrar_graficos_prediccion():
     try:
-        # Verificar si hay resultados de predicción
         if 'cache_resultados' not in session:
             flash('Primero debes generar predicciones', 'error')
             return redirect(url_for('main.predecir'))
-            
-        # Cargar los resultados guardados
+        
         cache_file = session['cache_resultados']
+        
+        # Verificación adicional del archivo
+        if not os.path.exists(cache_file):
+            flash('Los datos de predicción han expirado', 'error')
+            return redirect(url_for('main.predecir'))
+
         with open(cache_file, 'rb') as f:
             resultados = pickle.load(f)
         
-        # Convertir a DataFrame
+        
+        if 'predictions' not in resultados:
+            flash('Datos de predicción no tienen el formato esperado', 'error')
+            return redirect(url_for('main.predecir'))
+
         df_predicciones = pd.DataFrame(resultados['predictions'])
         
-        # Generar gráficos específicos para predicción
+        # Debug: Verifica las columnas del DataFrame
+        current_app.logger.debug(f"Columnas del DataFrame: {str(df_predicciones.columns.tolist())}")
+        
         graficos = generar_graficos_prediccion(df_predicciones)
+        
+        if not graficos:
+            flash('No se pudieron generar gráficos con los datos disponibles', 'warning')
+            return redirect(url_for('main.predecir'))
         
         return render_template('resultados_graficos.html',
                             graficos_brutos=graficos,
                             tipo='prediccion')
             
     except Exception as e:
-        current_app.logger.error(f"Error mostrando gráficos de predicción: {str(e)}")
-        flash('Error al generar gráficos de predicción', 'error')
+        current_app.logger.error(f"Error completo mostrando gráficos: {str(e)}", exc_info=True)
+        flash('Error al generar gráficos de predicción. Detalles en logs.', 'error')
         return redirect(url_for('main.predecir'))
 
+
+
 def generar_graficos_prediccion(df):
+    """Genera exactamente 6 gráficos de predicción, evitando duplicados"""
     graficos = []
     
+    # Verificar si el DataFrame tiene datos
+    if df.empty:
+        print("DEBUG: DataFrame vacío, no se generarán gráficos.")
+        return graficos
     try:
-        # 1. Gráfico de distribución de probabilidades
-        plt.figure(figsize=(10, 6))
-        sns.histplot(df['probabilidad'], bins=20, kde=True, color='purple')
-        plt.title('Distribución de Probabilidades de Abandono')
-        plt.xlabel('Probabilidad')
-        plt.ylabel('Cantidad de Estudiantes')
-        graficos.append({
-            'titulo': 'Distribución de Probabilidades',
-            'nombre_archivo': guardar_grafico(plt, 'pred_probabilidades'),
-            'descripcion': 'Muestra cómo se distribuyen las probabilidades de abandono entre los estudiantes'
-        })
+        img_dir = os.path.join(current_app.static_folder, 'img' )
+        os.makedirs(img_dir, exist_ok=True)
         
-        # 2. Gráfico de variables importantes (si tu modelo lo permite)
-        if 'importancia' in df.columns:
-            plt.figure(figsize=(12, 6))
-            df.sort_values('importancia', ascending=False).head(10).plot.barh(
-                x='variable', y='importancia', color='teal')
-            plt.title('Top 10 Variables Más Importantes')
-            graficos.append({
-                'titulo': 'Variables Importantes',
-                'nombre_archivo': guardar_grafico(plt, 'pred_importancia'),
-                'descripcion': 'Variables que más influyen en la predicción de abandono'
-            })
+        # Por una de estas opciones:
+        plt.style.use('seaborn-v0_8')  # Estilo moderno equivalente
+        # O:
+        plt.style.use('ggplot')        # Alternativa popular
+        # O:
+        sns.set_theme() 
+        colores = ['#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc948']
         
-        # 3. Gráfico comparativo (ej: probabilidad vs asistencia)
-        if 'asistencia' in df.columns:
-            plt.figure(figsize=(10, 6))
-            sns.scatterplot(x='asistencia', y='probabilidad', hue='prediccion', data=df)
-            plt.title('Relación entre Asistencia y Probabilidad de Abandono')
-            graficos.append({
-                'titulo': 'Asistencia vs Abandono',
-                'nombre_archivo': guardar_grafico(plt, 'pred_asistencia'),
-                'descripcion': 'Relación entre asistencia a clases y probabilidad de abandono'
-            })
-            
+        # Lista de gráficos a generar
+        graficos_config = [
+            {
+                'nombre': 'probabilidades',
+                'generador': lambda: sns.histplot(df['probabilidad'], bins=20, kde=True, color=colores[0]),
+                'titulo': 'Distribución de Probabilidades',
+                'descripcion': 'Distribución de probabilidades de abandono',
+                'requiere': ['probabilidad']
+            },
+            {
+                'nombre': 'asistencia_probabilidad',
+                'generador': lambda: sns.scatterplot(x='asistencia', y='probabilidad', data=df, hue='prediccion', palette=colores[1:3]),
+                'titulo': 'Asistencia vs Probabilidad',
+                'descripcion': 'Relación entre asistencia y probabilidad de abandono',
+                'requiere': ['asistencia', 'probabilidad', 'prediccion']
+            },
+            {
+                'nombre': 'edad_probabilidad',
+                'generador': lambda: sns.boxplot(x='edad', y='probabilidad', data=df, color=colores[2]),
+                'titulo': 'Probabilidad por Edad',
+                'descripcion': 'Distribución de probabilidades por edad',
+                'requiere': ['edad', 'probabilidad']
+            },
+            {
+                'nombre': 'sexo_probabilidad',
+                'generador': lambda: sns.barplot(x='sexo', y='probabilidad', data=df, ci=None, palette=[colores[4], colores[5]]),
+                'titulo': 'Probabilidad por Sexo',
+                'descripcion': 'Comparación de probabilidades entre sexos',
+                'requiere': ['sexo', 'probabilidad']
+            },
+            {
+                'nombre': 'motivacion_probabilidad',
+                'generador': lambda: sns.regplot(x='motivacion', y='probabilidad', data=df, scatter_kws={'alpha':0.3}),
+                'titulo': 'Motivación vs Probabilidad',
+                'descripcion': 'Relación entre motivación y probabilidad de abandono',
+                'requiere': ['motivacion', 'probabilidad']
+            },
+            {
+                'nombre': 'factores_riesgo',
+                'generador': lambda: df[['estres', 'economia_dificulta', 'dificultad_materias']].mean().plot.bar(color=colores),
+                'titulo': 'Factores de Riesgo Promedio',
+                'descripcion': 'Factores que influyen en el abandono',
+                'requiere': ['estres', 'economia_dificulta', 'dificultad_materias']
+            }
+        ]
+        for config in graficos_config[:6]:
+            try:
+                # Verificar columnas requeridas
+                if not all(col in df.columns for col in config['requiere']):
+                    current_app.logger.warning(f"Columnas faltantes para gráfico {config['nombre']}")
+                    continue
+                    
+                nombre_archivo = f"pred_{config['nombre']}.png"
+                ruta_completa = os.path.join(img_dir, nombre_archivo)
+                
+                plt.figure(figsize=(10, 6))
+                config['generador']()
+                plt.title(config['titulo'])
+                
+                # Guardar el gráfico
+                plt.savefig(ruta_completa, bbox_inches='tight', dpi=150)
+                plt.close()
+                
+                graficos.append({
+                    'titulo': config['titulo'],
+                    'nombre_archivo': f'img/{nombre_archivo}',
+                    'descripcion': config['descripcion']
+                })
+                    
+            except Exception as e:
+                current_app.logger.error(f"Error generando gráfico {config['nombre']}: {str(e)}", exc_info=True)
+                continue
+        
     except Exception as e:
-        current_app.logger.error(f"Error generando gráficos: {str(e)}")
-    
-    return graficos
+        current_app.logger.error(f"Error en generar_graficos_prediccion: {str(e)}", exc_info=True)
+        
+    return graficos[:6]
 
 @bp.route('/exportar/<tipo>')
 def exportar_resultados(tipo):
+    print(f"DEBUG: Exportando resultados en formato {tipo}")
     if 'cache_resultados' not in session:
         flash('No hay resultados para exportar', 'error')
         return redirect(url_for('main.predecir'))
@@ -794,6 +868,93 @@ def exportar_resultados(tipo):
             df.to_excel(output_path, index=False)
             return send_file(output_path, as_attachment=True)
         
+        elif tipo == 'pdf':
+            from fpdf import FPDF
+            
+            # Crear PDF
+            pdf = FPDF()
+            pdf.set_auto_page_break(auto=True, margin=15)
+            pdf.add_page()
+            
+            # Configuración inicial
+            pdf.set_font('Arial', 'B', 16)
+            
+            # Agregar título
+            pdf.cell(0, 10, 'Reporte de Resultados de Predicción', 0, 1, 'C')
+            pdf.ln(10)
+            
+            # Obtener todas las imágenes de la carpeta gráficos
+            graphics_dir = os.path.join(current_app.static_folder, 'img')
+            all_images = [f for f in os.listdir(graphics_dir) if f.endswith(('.png', '.jpg', '.jpeg'))]
+            
+            # Organizar imágenes por categorías
+            categories = {
+                'train': [],
+                'pred': [],
+                'prev': []
+            }
+            
+            for img in all_images:
+                if img.startswith('train_'):
+                    categories['train'].append(img)
+                elif img.startswith('pred_'):
+                    categories['pred'].append(img)
+                elif img.startswith('prev_'):
+                    categories['prev'].append(img)
+            
+            # Sección 1: Train (Entrenamiento)
+            if categories['train']:
+                pdf.set_font('Arial', 'B', 14)
+                pdf.cell(0, 10, '1. Gráficos de Entrenamiento (train)', 0, 1)
+                pdf.set_font('Arial', '', 12)
+                
+                for img in sorted(categories['train']):
+                    img_path = os.path.join(graphics_dir, img)
+                    try:
+                        pdf.image(img_path, x=10, w=190)
+                        pdf.ln(5)
+                    except:
+                        current_app.logger.warning(f"No se pudo agregar imagen {img} al PDF")
+                        continue
+            
+            # Sección 2: Pred (Predicciones)
+            if categories['pred']:
+                pdf.add_page()
+                pdf.set_font('Arial', 'B', 14)
+                pdf.cell(0, 10, '2. Gráficos de Predicción (pred)', 0, 1)
+                pdf.set_font('Arial', '', 12)
+                
+                for img in sorted(categories['pred']):
+                    img_path = os.path.join(graphics_dir, img)
+                    try:
+                        pdf.image(img_path, x=10, w=190)
+                        pdf.ln(5)
+                    except:
+                        current_app.logger.warning(f"No se pudo agregar imagen {img} al PDF")
+                        continue
+
+            # Sección 3: Prev (Preevaluación)
+            if categories['prev']:
+                pdf.add_page()
+                pdf.set_font('Arial', 'B', 14)
+                pdf.cell(0, 10, '3. Gráficos de prealgoritmo (prev)', 0, 1)
+                pdf.set_font('Arial', '', 12)
+
+                for img in sorted(categories['prev']):
+                    img_path = os.path.join(graphics_dir, img)
+                    try:
+                        pdf.image(img_path, x=10, w=190)
+                        pdf.ln(5)
+                    except:
+                        current_app.logger.warning(f"No se pudo agregar imagen {img} al PDF")
+                        continue
+            
+            # Guardar PDF
+            output_path = os.path.join(output_dir, 'resultados_prediccion.pdf')
+            pdf.output(output_path)
+            
+            return send_file(output_path, as_attachment=True)
+        
         else:
             flash('Formato de exportación no válido', 'error')
             return redirect(url_for('main.mostrar_resultados'))
@@ -802,7 +963,9 @@ def exportar_resultados(tipo):
         current_app.logger.error(f"Error exportando resultados: {str(e)}", exc_info=True)
         flash(f'Error al exportar resultados: {str(e)}', 'error')
         return redirect(url_for('main.mostrar_resultados'))
-    
+
+
+
 @bp.route('/explorador-datos')
 def explorador_datos():
     try:
