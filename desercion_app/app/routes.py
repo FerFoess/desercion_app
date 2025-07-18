@@ -1,5 +1,6 @@
 import json
 import os
+import pickle
 import uuid
 import math
 import pandas as pd
@@ -9,7 +10,7 @@ matplotlib.use('Agg')  # Configuración importante para servidor
 import matplotlib.pyplot as plt
 import seaborn as sns
 from flask import (
-    Blueprint, render_template, request, redirect, 
+    Blueprint, jsonify, render_template, request, redirect, 
     url_for, flash, send_file, session, current_app
 )
 from werkzeug.utils import secure_filename
@@ -253,8 +254,17 @@ def index():
                 if 'abandono' not in df.columns:
                     flash('El archivo debe contener una columna "abandono"', 'error')
                     return redirect(url_for('main.index'))
-
+                
                 guardar_datos_cache(df, 'entrenamiento')
+
+                # 2. ⭐⭐ NUEVO: Entrenar y guardar modelo automáticamente ⭐⭐
+                try:
+                    modelo = train_model(df, model_cache)  # Usa model_cache.save_model()
+                    session['modelo_entrenado'] = True
+                    flash('Modelo entrenado exitosamente', 'success')
+                except Exception as e:
+                    flash(f'Error entrenando modelo: {str(e)}', 'warning')
+
                 limpiar_graficos_anteriores('train')
                 graficos = generar_graficos_brutos(df, 'train')
 
@@ -325,34 +335,20 @@ def entrenar():
         return redirect(url_for('main.index'))
     
     try:
+        # 1. Cargar datos
         df = cargar_datos_cache('entrenamiento')
-        
         if df is None:
-            flash('No se pudieron cargar los datos de entrenamiento', 'error')
+            flash('Error al cargar datos de entrenamiento', 'error')
             return redirect(url_for('main.index'))
         
-        # Entrenar el modelo usando la función de modelo.py
-        modelo_entrenado = train_model(df)
+        # 2. Entrenar modelo (ESTA ES LA PARTE CLAVE)
+        modelo_entrenado = train_model(df, model_cache)  # <- Asegúrate de pasar model_cache
         
-        # Guardar el modelo en caché
-        model_cache.save_model(modelo_entrenado)
-        
-        # Guardar referencia en sesión
+        # 3. Guardar en sesión
         session['modelo_entrenado'] = True
+        session.modified = True
         
-        # Generar gráficos de evaluación
-        y_train = df['abandono']
-        X_train = df.drop(columns=['abandono', 'nombre'], errors='ignore')
-        
-        # Cargar el modelo para obtener probabilidades
-        modelo_cargado = model_cache.load_model()
-        y_pred_proba = modelo_cargado['model'].predict_proba(
-            modelo_cargado['scaler'].transform(X_train)
-        )[:, 1]
-        
-        generate_model_graphs(y_train, y_pred_proba)
-        
-        flash('Modelo entrenado exitosamente', 'success')
+        flash('Modelo entrenado y guardado correctamente', 'success')
         return redirect(url_for('main.mostrar_metricas'))
         
     except Exception as e:
@@ -381,6 +377,7 @@ def mostrar_metricas():
         current_app.logger.error(f"Error mostrando métricas: {str(e)}", exc_info=True)
         flash('Error al cargar las métricas del modelo', 'error')
         return redirect(url_for('main.index'))
+
 
 @bp.route('/predecir', methods=['GET', 'POST'])
 def predecir():
@@ -419,88 +416,195 @@ def predecir():
                 flash(f'Error: {str(e)}', 'error')
                 return redirect(url_for('main.predecir'))
     
-    # Cargar datos de predicción si existen
     df_pred = cargar_datos_cache('prediccion')
     
+    # Verificar si hay modelo entrenado (usa get para evitar KeyError)
+    modelo_entrenado = model_cache.has_model()
+    
+    # Debug: Imprime el estado para diagnóstico
+    print(f"[DEBUG] ¿Modelo en caché? {modelo_entrenado}")
+    print(f"DEBUG - Modelo entrenado: {modelo_entrenado}, Datos cargados: {df_pred is not None}")
+
+    print("DEBUG: archivo de predicción cargado =", df_pred.shape if df_pred is not None else 'No cargado')
+
+
+    # Pasar los datos a la plantilla
     return render_template('prediccion.html',
-                        datos_prediccion=df_pred.to_dict('records') if df_pred is not None else [],
-                        columnas_prediccion=df_pred.columns.tolist() if df_pred is not None else [],
-                        graficos_prediccion=obtener_graficos_guardados('pred'),
-                        modelo_entrenado='modelo_entrenado' in session)
+        datos_prediccion=df_pred.to_dict('records') if df_pred is not None else [],
+        columnas_prediccion=df_pred.columns.tolist() if df_pred is not None else [],
+        graficos_prediccion=obtener_graficos_guardados('pred'),
+        modelo_entrenado=modelo_entrenado
+    )
 
 @bp.route('/ejecutar_prediccion', methods=['POST'])
 def ejecutar_prediccion():
-    if 'cache_file_prediccion' not in session:
-        flash('Primero sube un archivo para predicción', 'error')
-        return redirect(url_for('main.predecir'))
-
     try:
-        # Cargar datos de predicción desde caché
+        # 1. Verificar archivo de predicción
         df_pred = cargar_datos_cache('prediccion')
         if df_pred is None:
-            flash('Error al cargar datos de predicción', 'error')
+            flash('Primero sube un archivo para predicción', 'error')
             return redirect(url_for('main.predecir'))
 
-        # Verificar si hay un modelo entrenado
-        if 'modelo_entrenado' not in session:
+        # 2. Verificar modelo entrenado usando el caché
+        if not model_cache.has_model():  # 👈 Nuevo: Verifica en caché en lugar de sesión
             flash('Primero debes entrenar un modelo', 'error')
             return redirect(url_for('main.index'))
 
-        # Cargar el modelo entrenado
+        # 3. Cargar modelo desde caché
         modelo_cargado = model_cache.load_model()
         if modelo_cargado is None:
             flash('Error al cargar el modelo entrenado', 'error')
             return redirect(url_for('main.index'))
         
-        # Hacer la predicción
+        # 4. Ejecutar predicción
         resultados = predict(modelo_cargado, df_pred)
-        
+        print(f"DEBUG: Resultados de la predicción: {resultados}")
         if not resultados['success']:
             flash(f'Error en predicción: {resultados["error"]}', 'error')
             return redirect(url_for('main.predecir'))
         
-        # Guardar resultados en la sesión
-        session['resultados_prediccion'] = resultados
+        # 5. Guardar resultados (aquí puedes mantener la sesión o moverlo a caché)
+        cache_file = os.path.join('data_cache', f'resultados_{uuid.uuid4().hex[:8]}.pkl')
+        with open(cache_file, 'wb') as f:
+            pickle.dump(resultados, f)
+
+        session['cache_resultados'] = cache_file
         
         flash('Predicción ejecutada correctamente', 'success')
-        return redirect(url_for('main.mostrar_resultados'))
+        return redirect(url_for('main.mostrar_metricas'))
 
     except Exception as e:
         current_app.logger.error(f"Error en predicción: {str(e)}", exc_info=True)
         flash(f'Error al predecir: {str(e)}', 'error')
-        return redirect(url_for('main.predecir')) 
-
+        return redirect(url_for('main.predecir'))
+    
 @bp.route('/resultados')
 def mostrar_resultados():
-    # Verificar si hay resultados
-    if 'resultados_prediccion' not in session:
-        flash('No hay resultados de predicción disponibles', 'error')
-        return redirect(url_for('main.predecir'))
-
     try:
-        resultados = session['resultados_prediccion']
+        # 1. Verificar si existe caché de resultados
+        if 'cache_resultados' not in session:
+            flash('No hay resultados de predicción disponibles', 'error')
+            return redirect(url_for('main.predecir'))
         
-        # Convertir a DataFrame para gráficos
+        # 2. Cargar desde caché
+        cache_file = session['cache_resultados']
+        if not os.path.exists(cache_file):
+            flash('Los resultados han expirado o fueron eliminados', 'error')
+            return redirect(url_for('main.predecir'))
+        
+        with open(cache_file, 'rb') as f:
+            resultados = pickle.load(f)
+        
+        # Debug: Verificar estructura
+        print(f"DEBUG - Resultados cargados. Estructura: {type(resultados)}")
+        if isinstance(resultados, dict):
+            print(f"Claves disponibles: {resultados.keys()}")
+        
+        # 3. Validar estructura básica
+        if 'predictions' not in resultados:
+            flash('Formato de resultados inválido', 'error')
+            return redirect(url_for('main.predecir'))
+        
+        # 4. Procesar resultados
         df_resultados = pd.DataFrame(resultados['predictions'])
         
-        # Generar gráficos (opcional)
+        # 5. Generar gráficos (si aplica)
         graficos_resultados = []
         if 'probabilidad' in df_resultados.columns:
-            plt.figure(figsize=(10, 6))
-            sns.histplot(df_resultados['probabilidad'], bins=20, kde=True)
-            plt.title('Distribución de Probabilidades de Abandono')
-            graficos_resultados.append(guardar_grafico(plt, 'res_probabilidades'))
-
-        return render_template('resultados_prediccion.html',
-                             predicciones=resultados['predictions'],
-                             fecha_prediccion=resultados['prediction_date'],
-                             graficos_resultados=graficos_resultados,
-                             metricas=resultados.get('metrics', None))
-
+            try:
+                plt.figure(figsize=(10, 6))
+                sns.histplot(df_resultados['probabilidad'], bins=20, kde=True)
+                plt.title('Distribución de Probabilidades de Abandono')
+                grafico_path = guardar_grafico(plt, 'res_probabilidades')
+                graficos_resultados.append(grafico_path)
+                plt.close()
+            except Exception as e:
+                current_app.logger.error(f"Error generando gráfico: {str(e)}")
+        
+        # 6. Renderizar plantilla
+        return render_template('resultados_predicciones.html',
+                            predicciones=resultados['predictions'],
+                            fecha_prediccion=resultados.get('prediction_date', 'N/A'),
+                            graficos_resultados=graficos_resultados,
+                            metricas=resultados.get('metrics', {}))
+    
     except Exception as e:
         current_app.logger.error(f"Error mostrando resultados: {str(e)}", exc_info=True)
-        flash('Error al mostrar resultados', 'error')
+        flash('Error al procesar los resultados', 'error')
         return redirect(url_for('main.predecir'))
+
+
+@bp.route('/graficos-prediccion')
+def mostrar_graficos_prediccion():
+    try:
+        # Verificar si hay resultados de predicción
+        if 'cache_resultados' not in session:
+            flash('Primero debes generar predicciones', 'error')
+            return redirect(url_for('main.predecir'))
+            
+        # Cargar los resultados guardados
+        cache_file = session['cache_resultados']
+        with open(cache_file, 'rb') as f:
+            resultados = pickle.load(f)
+        
+        # Convertir a DataFrame
+        df_predicciones = pd.DataFrame(resultados['predictions'])
+        
+        # Generar gráficos específicos para predicción
+        graficos = generar_graficos_prediccion(df_predicciones)
+        
+        return render_template('resultados_graficos.html',
+                            graficos_brutos=graficos,
+                            tipo='prediccion')
+            
+    except Exception as e:
+        current_app.logger.error(f"Error mostrando gráficos de predicción: {str(e)}")
+        flash('Error al generar gráficos de predicción', 'error')
+        return redirect(url_for('main.predecir'))
+
+def generar_graficos_prediccion(df):
+    graficos = []
+    
+    try:
+        # 1. Gráfico de distribución de probabilidades
+        plt.figure(figsize=(10, 6))
+        sns.histplot(df['probabilidad'], bins=20, kde=True, color='purple')
+        plt.title('Distribución de Probabilidades de Abandono')
+        plt.xlabel('Probabilidad')
+        plt.ylabel('Cantidad de Estudiantes')
+        graficos.append({
+            'titulo': 'Distribución de Probabilidades',
+            'nombre_archivo': guardar_grafico(plt, 'pred_probabilidades'),
+            'descripcion': 'Muestra cómo se distribuyen las probabilidades de abandono entre los estudiantes'
+        })
+        
+        # 2. Gráfico de variables importantes (si tu modelo lo permite)
+        if 'importancia' in df.columns:
+            plt.figure(figsize=(12, 6))
+            df.sort_values('importancia', ascending=False).head(10).plot.barh(
+                x='variable', y='importancia', color='teal')
+            plt.title('Top 10 Variables Más Importantes')
+            graficos.append({
+                'titulo': 'Variables Importantes',
+                'nombre_archivo': guardar_grafico(plt, 'pred_importancia'),
+                'descripcion': 'Variables que más influyen en la predicción de abandono'
+            })
+        
+        # 3. Gráfico comparativo (ej: probabilidad vs asistencia)
+        if 'asistencia' in df.columns:
+            plt.figure(figsize=(10, 6))
+            sns.scatterplot(x='asistencia', y='probabilidad', hue='prediccion', data=df)
+            plt.title('Relación entre Asistencia y Probabilidad de Abandono')
+            graficos.append({
+                'titulo': 'Asistencia vs Abandono',
+                'nombre_archivo': guardar_grafico(plt, 'pred_asistencia'),
+                'descripcion': 'Relación entre asistencia a clases y probabilidad de abandono'
+            })
+            
+    except Exception as e:
+        current_app.logger.error(f"Error generando gráficos: {str(e)}")
+    
+    return graficos
 
 @bp.route('/exportar/<tipo>')
 def exportar_resultados(tipo):
@@ -532,3 +636,60 @@ def exportar_resultados(tipo):
         current_app.logger.error(f"Error exportando resultados: {str(e)}", exc_info=True)
         flash(f'Error al exportar resultados: {str(e)}', 'error')
         return redirect(url_for('main.mostrar_resultados'))
+    
+
+@bp.route('/explorador-datos')
+def explorador_datos():
+    try:
+        # Verificación combinada más eficiente
+        cache_file = session.get('cache_resultados')
+        if not cache_file or not os.path.exists(cache_file):
+            flash('Primero debes generar predicciones o los resultados han expirado', 'error')
+            return redirect(url_for('main.predecir'))
+            
+        with open(cache_file, 'rb') as f:
+            resultados = pickle.load(f)
+        print(f"DEBUG: Resultados cargados en explorador_datos: {resultados}")
+        if 'predictions' not in resultados:
+            flash('Los resultados no tienen el formato correcto', 'error')
+            return redirect(url_for('main.predecir'))
+            
+        # Pasar los resultados al template
+        return render_template('resultados_datos.html', 
+                            resultados=resultados['predictions'],
+                            metadatos={
+                                'fecha_prediccion': resultados.get('prediction_date', 'N/A'),
+                                'modelo_usado': resultados.get('model_name', 'Desconocido')
+                            })
+            
+    except Exception as e:
+        current_app.logger.error(f"Error en explorador_datos: {str(e)}", exc_info=True)
+        flash(f'Error técnico al cargar los resultados: {str(e)}', 'error')
+        return redirect(url_for('main.index'))
+
+@bp.route('/resultados/datos_json')
+def datos_json():
+    try:
+        # Verificar si hay resultados en caché
+        if 'cache_resultados' not in session:
+            return jsonify({'error': 'No hay datos disponibles'}), 404
+            
+        cache_file = session['cache_resultados']
+        
+        # Verificar que el archivo existe físicamente
+        if not os.path.exists(cache_file):
+            return jsonify({'error': 'Archivo de resultados no encontrado'}), 404
+            
+        # Cargar y devolver los datos
+        with open(cache_file, 'rb') as f:
+            resultados = pickle.load(f)
+        
+        # Asegurar que tenemos predictions
+        if 'predictions' not in resultados:
+            return jsonify({'error': 'Formato de datos inválido'}), 500
+            
+        return jsonify(resultados['predictions'])
+        
+    except Exception as e:
+        current_app.logger.error(f"Error en datos_json: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500

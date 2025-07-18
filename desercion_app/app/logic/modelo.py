@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_curve, auc, precision_recall_curve
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 import matplotlib.pyplot as plt
 import os
@@ -10,191 +10,160 @@ import logging
 import pickle
 import base64
 from datetime import datetime
-import fnmatch
 
 # Configuración de logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class ModelCacheManager:
-    """Gestor de caché para modelos entrenados con todas las correcciones"""
+    """Gestor de caché para modelos entrenados con compatibilidad para versiones"""
     
     def __init__(self, cache_dir=None):
         try:
             # Configuración de rutas ABSOLUTAS
             if cache_dir is None:
-                # Retrocedemos 2 niveles desde el directorio actual (app/logic/) para llegar a DESERCION_APP/
                 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 self.cache_dir = os.path.join(base_dir, 'data_cache')
             else:
                 self.cache_dir = os.path.abspath(cache_dir)
             
-            print(f"\n[DEBUG] Ruta base calculada: {base_dir}")
-            print(f"[DEBUG] Ruta completa de caché: {self.cache_dir}")
-            print(f"[DEBUG] ¿Existe el directorio? {os.path.exists(self.cache_dir)}")
-            
+            logger.info(f"Ruta de caché configurada: {self.cache_dir}")
             os.makedirs(self.cache_dir, exist_ok=True)
             self.current_model_path = self._find_latest_model()
             
-            if self.current_model_path:
-                print(f"[DEBUG] Modelo actual configurado: {self.current_model_path}")
-            else:
-                print("[WARNING] No se encontraron modelos en caché")
-                
         except Exception as e:
-            print(f"[ERROR] Error inicializando ModelCacheManager: {str(e)}")
+            logger.error(f"Error inicializando ModelCacheManager: {str(e)}")
             raise
 
     def _find_latest_model(self):
-        """Busca el modelo más reciente con criterios mejorados"""
+        """Busca el modelo más reciente (sin borrar otros)"""
         try:
             if not os.path.exists(self.cache_dir):
-                print(f"[ERROR] ¡El directorio no existe! {self.cache_dir}")
                 return None
                 
-            # Busca archivos que empiecen con 'entrenamiento_' y terminen en '.pkl'
             model_files = [f for f in os.listdir(self.cache_dir) 
-                         if f.endswith('.pkl') and f.startswith('entrenamiento_')]
-            print(f"[DEBUG] Archivos .pkl encontrados: {model_files}")
+                         if f.endswith('.pkl') and f.startswith(('entrenamiento_', 'modelo_'))]
             
             if not model_files:
                 return None
                 
-            # Ordena por fecha de modificación (el más reciente primero)
             model_files.sort(key=lambda x: os.path.getmtime(os.path.join(self.cache_dir, x)), reverse=True)
             latest_model = os.path.join(self.cache_dir, model_files[0])
             
-            # Verifica que el archivo no esté vacío
-            if os.path.getsize(latest_model) == 0:
-                print(f"[WARNING] ¡El modelo {latest_model} está vacío!")
-                return None
-                
-            return latest_model
+            if os.path.getsize(latest_model) > 0:
+                return latest_model
+            return None
             
         except Exception as e:
-            print(f"[ERROR] Error en _find_latest_model: {str(e)}")
+            logger.error(f"Error buscando modelo: {str(e)}")
             return None
 
+    def has_model(self):
+        """Verifica si hay modelos disponibles"""
+        return self._find_latest_model() is not None
+
     def load_model(self):
-        """Carga el modelo con validación mejorada y definición correcta de trained_model"""
+        """Carga modelos nuevos (v2.0) y antiguos (v1.0)"""
         if not self.current_model_path:
             self.current_model_path = self._find_latest_model()
             if not self.current_model_path:
-                raise ValueError("No hay modelos válidos en el directorio de caché")
-        
-        print(f"\n[DEBUG] Intentando cargar: {self.current_model_path}")
-        print(f"[DEBUG] Tamaño del archivo: {os.path.getsize(self.current_model_path)} bytes")
+                raise ValueError("No hay modelos válidos en caché")
         
         try:
             with open(self.current_model_path, 'rb') as f:
                 model_data = pickle.load(f)
-                print("[DEBUG] Claves del modelo cargado:", model_data.keys())
+            
+             # Debug: Inspeccionar estructura
+            print("\n[DEBUG] Contenido del modelo:")
+            for key, value in model_data.items():
+             print(f"{key}: {type(value)}")
+            # Detección automática de versión
+            if 'version' in model_data:  # Modelo nuevo (v2.0+)
+                required_keys = ['model', 'scaler', 'features', 'metrics', 'training_date']
+                if all(key in model_data for key in required_keys):
+                    logger.info("Modelo nuevo (v2.0) cargado")
+                    return model_data
+            
+            # Modelo antiguo (v1.0)
+            elif all(key in model_data for key in ['model', 'scaler', 'features']):
+                logger.info("Modelo antiguo (v1.0) detectado - Convirtiendo...")
+                model = model_data['model']
+                scaler = model_data['scaler']
                 
-            # Validar estructura del modelo
-            required_keys = ['model', 'scaler', 'features', 'metrics', 'training_date']
-            if not all(key in model_data for key in required_keys):
-                raise ValueError("Estructura del modelo en caché inválida")
+                if isinstance(model, str):  # Si está serializado en base64
+                    model = pickle.loads(base64.b64decode(model.encode('utf-8')))
+                    scaler = pickle.loads(base64.b64decode(model_data['scaler'].encode('utf-8')))
+                
+                return {
+                    'model': model,
+                    'scaler': scaler,
+                    'features': model_data['features'],
+                    'metrics': model_data.get('metrics', {}),
+                    'training_date': model_data.get('training_date', datetime.now().isoformat()),
+                    'version': '1.0'
+                }
             
-            # Deserializar componentes - ¡Aquí definimos correctamente trained_model!
-            trained_model = {
-                'metrics': model_data['metrics'],
-                'training_date': model_data['training_date'],
-                'features': model_data['features'],
-                'model': pickle.loads(base64.b64decode(model_data['model'].encode('utf-8'))),
-                'scaler': pickle.loads(base64.b64decode(model_data['scaler'].encode('utf-8')))
-            }
-            
-            print("[DEBUG] Modelo deserializado correctamente")
-            return trained_model
+            raise ValueError("Formato de modelo desconocido")
             
         except Exception as e:
-            print(f"[ERROR] ¡El modelo podría estar corrupto! Error: {str(e)}")
-            # Intenta eliminar el modelo corrupto
-            try:
-                os.remove(self.current_model_path)
-                print(f"[CLEANUP] Modelo corrupto eliminado: {self.current_model_path}")
-            except:
-                pass
-            self.current_model_path = None
+            logger.error(f"Error cargando modelo: {str(e)}")
             raise
 
     def save_model(self, trained_model):
-        """Serializa y guarda el modelo en caché"""
+        """Guarda el modelo asegurando la estructura correcta"""
+        required_keys = ['model', 'scaler', 'features', 'metrics', 'training_date']
+        missing_keys = [k for k in required_keys if k not in trained_model]
+        if missing_keys:
+            raise ValueError(f"Faltan claves en el modelo: {missing_keys}")
+
         try:
-            # Generar nombre de archivo único con timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            cache_file = os.path.join(self.cache_dir, f"entrenamiento_{timestamp}_{uuid.uuid4().hex[:6]}.pkl")
-            
-            # Serializar componentes del modelo
-            model_data = {
-                'metrics': trained_model['metrics'],
-                'training_date': trained_model['training_date'],
-                'features': trained_model['features'],
-                'model': base64.b64encode(pickle.dumps(trained_model['model'])).decode('utf-8'),
-                'scaler': base64.b64encode(pickle.dumps(trained_model['scaler'])).decode('utf-8'),
-                'version': '1.0'
-            }
-            
-            # Guardar en archivo
-            with open(cache_file, 'wb') as f:
-                pickle.dump(model_data, f)
-            
-            # Limpiar modelo anterior si existe
-            if self.current_model_path and os.path.exists(self.current_model_path):
-                os.remove(self.current_model_path)
-            
-            self.current_model_path = cache_file
-            logger.info(f"Modelo guardado en caché: {cache_file}")
-            return cache_file
-            
+            model_path = os.path.join(self.cache_dir, f"modelo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl")
+            with open(model_path, "wb") as f:
+                pickle.dump(trained_model, f)
+            logger.info(f"Modelo guardado en: {model_path}")
+            return model_path
         except Exception as e:
-            logger.error(f"Error al guardar modelo en caché: {str(e)}")
+            logger.error(f"Error al guardar: {str(e)}")
             raise
 
-def encode_data(df):
-    """Codificación de datos categóricos"""
-    # Implementa tu lógica de codificación aquí
-    return df
-
-def train_model(training_data):
+def train_model(training_data, cache_manager=None):
     """
-    Entrena un modelo de regresión logística
-    
+    Entrena un modelo de regresión logística y lo guarda automáticamente
     Args:
         training_data (pd.DataFrame): Datos de entrenamiento
-        
+        cache_manager (ModelCacheManager): Opcional. Si no se proporciona, se crea uno nuevo
     Returns:
         dict: Modelo entrenado y componentes
     """
     try:
         logger.info("Iniciando entrenamiento del modelo")
-        
-        # 1. Preprocesamiento de datos
-        df_encoded = encode_data(training_data)
+
+        # 1. Preprocesamiento
+        df_encoded = codificar_datos(training_data, es_prediccion=False)
         X = df_encoded.drop(columns=['abandono', 'nombre'], errors='ignore')
         y = df_encoded['abandono']
         features = list(X.columns)
-        
-        # 2. Escalado de características
+
+        # 2. Escalado
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
-        
-        # 3. Entrenamiento del modelo
+
+        # 3. Entrenamiento
         model = LogisticRegression(
             max_iter=1000,
             random_state=42,
             class_weight='balanced',
             solver='lbfgs'
         )
-        
+
         # 4. Validación cruzada
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
         cv_scores = cross_val_score(model, X_scaled, y, cv=cv, scoring='accuracy')
-        
+
         # 5. Entrenamiento final
         model.fit(X_scaled, y)
-        
-        # 6. Cálculo de métricas
+
+        # 6. Métricas
         y_pred = model.predict(X_scaled)
         metrics = {
             'accuracy': round(accuracy_score(y, y_pred), 3),
@@ -204,66 +173,77 @@ def train_model(training_data):
             'cv_accuracy': [round(score, 3) for score in cv_scores],
             'cv_mean_accuracy': round(cv_scores.mean(), 3)
         }
-        
-        logger.info(f"Métricas del modelo: {metrics}")
-        
-        return {
+
+        # Crear estructura del modelo
+        trained_model = {
             'model': model,
             'scaler': scaler,
             'features': features,
             'metrics': metrics,
-            'training_date': datetime.now().isoformat()
+            'training_date': datetime.now().isoformat(),
+            'version': '2.0'
         }
+
+        logger.info("Modelo entrenado con éxito")
         
+        # Guardar usando el cache_manager
+        if cache_manager is None:
+            cache_manager = ModelCacheManager()
+        
+        cache_manager.save_model(trained_model)
+        logger.info("Modelo entrenado y guardado correctamente")
+        
+        return trained_model
+
     except Exception as e:
-        logger.error(f"Error en entrenamiento del modelo: {str(e)}")
+        logger.error(f"Error en entrenamiento: {str(e)}")
         raise
 
 def predict(model_data, input_data):
     """
-    Realiza predicciones con el modelo entrenado
-    
+    Realiza predicciones con el modelo
     Args:
-        model_data (dict): Modelo entrenado y componentes
-        input_data (pd.DataFrame): Datos para predicción
-        
+        model_data (dict): Modelo entrenado
+        input_data (pd.DataFrame): Datos para predecir
     Returns:
-        dict: Resultados de la predicción
+        dict: Resultados y métricas
     """
     try:
-        logger.info("Iniciando predicción")
+        # Validación de estructura
+        required = ['model', 'scaler', 'features']
+        if not all(key in model_data for key in required):
+            raise ValueError(f"Faltan componentes: {required}")
         
-        # 1. Validar componentes del modelo
-        required_components = ['model', 'scaler', 'features']
-        for comp in required_components:
-            if comp not in model_data:
-                raise ValueError(f"Falta componente requerido: {comp}")
-        
-        # 2. Preprocesamiento de datos
-        df_encoded = encode_data(input_data)
+        # Preprocesamiento
+        df_encoded = codificar_datos(input_data, es_prediccion=True)
         X = df_encoded.drop(columns=['nombre'], errors='ignore')
         
-        # 3. Validar características
+        # Dentro de predict(), reemplaza esta parte:
         if list(X.columns) != model_data['features']:
-            raise ValueError(
-                "Las características no coinciden con las de entrenamiento. "
-                f"Esperadas: {model_data['features']}, Obtenidas: {list(X.columns)}"
-            )
+            # Mensaje detallado
+            missing = set(model_data['features']) - set(X.columns)
+            extra = set(X.columns) - set(model_data['features'])
+            error_msg = f"""
+            Error de coincidencia en features:
+            - Faltan: {list(missing) if missing else 'Ninguna'}
+            - Sobran: {list(extra) if extra else 'Ninguna'}
+            - Esperadas: {model_data['features']}
+            - Recibidas: {list(X.columns)}
+            """
+            raise ValueError(error_msg)
         
-        # 4. Escalado y predicción
+        # Predicción
         X_scaled = model_data['scaler'].transform(X)
         predictions = model_data['model'].predict(X_scaled)
         probabilities = model_data['model'].predict_proba(X_scaled)[:, 1]
-        
-        # 5. Preparar resultados
-        results = df_encoded.copy()
-        results['prediccion'] = predictions
-        results['probabilidad'] = probabilities
-        
+
         return {
             'success': True,
-            'predictions': results.to_dict('records'),
-            'metrics': model_data['metrics'],
+            'predictions': df_encoded.assign(
+                prediccion=predictions,
+                probabilidad=probabilities
+            ).to_dict('records'),
+            'metrics': model_data.get('metrics', {}),
             'prediction_date': datetime.now().isoformat()
         }
         
@@ -271,49 +251,81 @@ def predict(model_data, input_data):
         logger.error(f"Error en predicción: {str(e)}")
         return {
             'success': False,
-            'error': str(e)
+            'error': str(e),
+            'debug_info': {
+                'model_keys': list(model_data.keys()) if isinstance(model_data, dict) else str(type(model_data)),
+                'input_columns': list(input_data.columns) if hasattr(input_data, 'columns') else None
+            }
         }
 
-# Ejemplo de uso seguro
-if __name__ == "__main__":
-    print("\n=== PRUEBA DEL SISTEMA DE MODELOS ===")
+
+# Función auxiliar (debes implementarla)
+def codificar_datos(df, es_prediccion=False):
+    """
+    Preprocesamiento robusto para datos de deserción estudiantil:
+    - Limpieza de NaN
+    - Codificación de variables categóricas
+    - Conversión de tipos
+    """
+    df = df.copy()
     
+    # 1. Limpieza de valores faltantes
+    # Opción 1: Eliminar filas con NaN (si tienes suficientes datos)
+    df = df.dropna()
+    
+     # 1. Normalizar nombres de columnas
+    column_mapping = {
+        'Te sientes motivadoa a seguir estudiando': 'motivacion',
+        'Asistencia promedio en % asistencia a clases': 'asistencia',
+        'Te sientes estresadoa con tus estudios actualmente': 'estres',
+        'Tienes acceso a recursos escolares internet libros computadora': 'acceso_recursos'
+    }
+    df = df.rename(columns=column_mapping)
+    
+    # 2. Codificar variables categóricas (ej: sexo, nivel_escolar)
+    cat_cols = df.select_dtypes(include=['object', 'category']).columns
+    for col in cat_cols:
+        if col != 'nombre':  # Excluir columna de nombres
+            df[col] = pd.factorize(df[col])[0]  # Convertir a códigos numéricos
+    
+    # 3. Convertir la variable objetivo (si es entrenamiento)
+    if not es_prediccion and 'abandono' in df.columns:
+        df['abandono'] = df['abandono'].astype(int)
+    
+    # Debug: Verificar que no queden NaN o tipos incorrectos
+    print("\n✅ Debug - Resumen post-procesamiento:")
+    print(f"- NaN restantes: {df.isnull().sum().sum()}")
+    print(f"- Tipos de datos:\n{df.dtypes}")
+    print(f"- Columnas categóricas convertidas: {list(cat_cols)}")
+    
+    return df
+
+if __name__ == "__main__":
+    """Ejemplo de uso"""
     try:
-        # 1. Inicializar el gestor
-        cache_manager = ModelCacheManager()
-        print("\n[TEST] ModelCacheManager inicializado correctamente")
+        # 1. Inicializar
+        cache = ModelCacheManager()
         
-        # 2. Simular datos de entrenamiento (ejemplo)
-        print("\n[TEST] Simulando entrenamiento...")
-        data = {
-            'feature1': [1, 2, 3, 4, 5],
-            'feature2': [5, 4, 3, 2, 1],
-            'abandono': [0, 1, 0, 1, 0]
-        }
-        train_df = pd.DataFrame(data)
-        
-        # 3. Entrenar y guardar modelo
-        trained_model = train_model(train_df)
-        model_path = cache_manager.save_model(trained_model)
-        print(f"\n[TEST] Modelo guardado en: {model_path}")
-        
-        # 4. Cargar modelo
-        loaded_model = cache_manager.load_model()
-        print("\n[TEST] Modelo cargado correctamente")
-        print("Features:", loaded_model['features'])
-        print("Métricas:", loaded_model['metrics'])
-        
-        # 5. Simular predicción
-        print("\n[TEST] Simulando predicción...")
-        test_data = pd.DataFrame({
-            'feature1': [2, 3],
-            'feature2': [4, 3]
+        # 2. Simular datos
+        train_data = pd.DataFrame({
+            'edad': [25, 30, 35, 40],
+            'promedio': [80, 85, 75, 90],
+            'abandono': [0, 1, 0, 1]
         })
         
-        prediction = predict(loaded_model, test_data)
-        print("\n[TEST] Resultados de predicción:", prediction)
+        # 3. Entrenar y guardar
+        modelo = train_model(train_data)
+        cache.save_model(modelo)
+        
+        # 4. Cargar y predecir
+        modelo_cargado = cache.load_model()
+        test_data = pd.DataFrame({
+            'edad': [28, 33],
+            'promedio': [82, 88]
+        })
+        
+        resultados = predict(modelo_cargado, test_data)
+        print("Predicción exitosa:", resultados['success'])
         
     except Exception as e:
-        print(f"\n[ERROR] Error en las pruebas: {str(e)}")
-    
-    print("\n=== PRUEBAS COMPLETADAS ===")
+        print(f"Error en pruebas: {str(e)}")
